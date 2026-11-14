@@ -61,7 +61,7 @@ export function AccountSheet({
           <span className={cn("absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-background", status === "error" || status === "offline" ? "bg-gold" : "bg-teal")} />
         ) : null}
       </Button>
-      <SheetContent side="bottom" className="mx-auto max-w-lg rounded-t-3xl pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <SheetContent side="bottom" className="mx-auto max-w-lg gap-4 rounded-t-3xl px-5 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {session ? (
           <SignedIn session={session} status={status} lastSynced={lastSynced} error={error} onSyncNow={onSyncNow} onDone={() => setOpen(false)} />
         ) : (
