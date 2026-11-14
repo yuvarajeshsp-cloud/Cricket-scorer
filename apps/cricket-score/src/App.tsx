@@ -7,7 +7,6 @@ import type { InningsEvent, Match, MatchSetup, Player } from "./engine/types"
 import { battingFirst, computeMatch, toScorecard, toSnapshot } from "./engine/score"
 import { live, liveUrl, newSecret } from "./live"
 import { newId, newPlayer, store, type AppData } from "./store"
-import { demoData } from "./demo"
 import type { PickResult } from "./components/PlayerPicker"
 import { Home } from "./screens/Home"
 import { Setup } from "./screens/Setup"
@@ -195,11 +194,6 @@ function ScorerApp() {
                     <AccountSheet session={session} status={sync.status} lastSynced={sync.lastSynced} error={sync.error} onSyncNow={sync.syncNow} />
                   ) : null
                 }
-                onDemo={() => {
-                  const demo = demoData()
-                  update((d) => ({ ...d, players: [...d.players, ...demo.players], matches: [...d.matches, ...demo.matches], currentId: demo.matches[1].id }))
-                  setTab("score")
-                }}
               />
             )}
             {shown === "score" && match && state && (

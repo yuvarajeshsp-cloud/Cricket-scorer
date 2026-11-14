@@ -11,7 +11,6 @@ export function Home({
   onNew,
   onOpen,
   onDelete,
-  onDemo,
   account,
 }: {
   matches: Match[]
@@ -19,7 +18,6 @@ export function Home({
   onNew: () => void
   onOpen: (id: string) => void
   onDelete: (id: string) => void
-  onDemo: () => void
   /** Sign-in / sync button for the header. */
   account?: React.ReactNode
 }) {
@@ -86,11 +84,6 @@ export function Home({
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent matches</p>
-          {!matches.length ? (
-            <Button variant="link" size="sm" onClick={onDemo}>
-              Load a demo match
-            </Button>
-          ) : null}
         </div>
         {sorted.filter((m) => m !== live).map((m) => (
           <MatchRow key={m.id} match={m} onOpen={onOpen} onDelete={onDelete} />

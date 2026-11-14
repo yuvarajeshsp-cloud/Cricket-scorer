@@ -31,7 +31,6 @@ npx vite build
 
 Before committing, run the hub checks from `CLAUDE.md`: `npm run typecheck` at the root, then `npx vite build` in `templates/app`.
 
-On the Home screen, **Load a demo match** adds 22 players and 2 matches: one finished, one mid-chase.
 
 ## How it works
 
