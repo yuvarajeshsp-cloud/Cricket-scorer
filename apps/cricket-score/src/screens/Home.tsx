@@ -12,6 +12,7 @@ export function Home({
   onOpen,
   onDelete,
   account,
+  groups,
 }: {
   matches: Match[]
   currentId: string | null
@@ -20,6 +21,8 @@ export function Home({
   onDelete: (id: string) => void
   /** Sign-in / sync button for the header. */
   account?: React.ReactNode
+  /** "Your groups" section (signed-in features). */
+  groups?: React.ReactNode
 }) {
   const sorted = [...matches].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const live = sorted.find((m) => m.id === currentId && !computeMatch(m).result)
@@ -80,6 +83,8 @@ export function Home({
           ))}
         </section>
       ) : null}
+
+      {groups}
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

@@ -65,14 +65,15 @@ export function AccountSheet({
         {session ? (
           <SignedIn session={session} status={status} lastSynced={lastSynced} error={error} onSyncNow={onSyncNow} onDone={() => setOpen(false)} />
         ) : (
-          <SignIn onDone={() => setOpen(false)} />
+          <SignIn inSheet onDone={() => setOpen(false)} />
         )}
       </SheetContent>
     </Sheet>
   )
 }
 
-function SignIn({ onDone }: { onDone: () => void }) {
+/** inSheet: heading uses the sheet's title (required inside a sheet); off for pages like the group invite. */
+export function SignIn({ onDone, inSheet = false }: { onDone: () => void; inSheet?: boolean }) {
   const [email, setEmail] = useState("")
   const [step, setStep] = useState<"email" | "code">("email")
   const [code, setCode] = useState("")
@@ -113,13 +114,20 @@ function SignIn({ onDone }: { onDone: () => void }) {
 
   return (
     <>
-      <SheetHeader className="px-0">
-        <SheetTitle className="text-xl">Sign in to save your matches</SheetTitle>
-        <SheetDescription>
-          Signed-in scorers get their matches, players and stats on every phone they sign in on, and can carry on scoring a match from another phone.
-          Viewers never need to sign in.
-        </SheetDescription>
-      </SheetHeader>
+      {inSheet ? (
+        <SheetHeader className="px-0">
+          <SheetTitle className="text-xl">Sign in to save your matches</SheetTitle>
+          <SheetDescription>
+            Signed-in scorers get their matches, players and stats on every phone they sign in on, and can carry on scoring a match from another phone.
+            Viewers never need to sign in.
+          </SheetDescription>
+        </SheetHeader>
+      ) : (
+        <div>
+          <h2 className="text-lg font-bold">Sign in to join</h2>
+          <p className="text-sm text-muted-foreground">Viewing a group needs a free account, so the group knows who you are.</p>
+        </div>
+      )}
 
       {step === "email" ? (
         <form

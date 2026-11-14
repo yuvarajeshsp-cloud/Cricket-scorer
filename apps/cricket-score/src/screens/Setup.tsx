@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowLeft, Coins, Minus, Plus, UserPlus, Users, X } from "lucide-react"
 import { Button, Input } from "@rajesh-hub/ui"
 import type { MatchSetup, Player } from "../engine/types"
 import { Choice, SectionLabel, Sheet } from "../components/bits"
 import { PlayerPicker } from "../components/PlayerPicker"
 import { newPlayer } from "../store"
+import { asPlayer, groupPlayers, type Group } from "../groups"
 
 const OVER_PRESETS = [5, 6, 8, 10, 20, 50]
 
@@ -24,14 +25,37 @@ function Stepper({ value, onChange, min, max }: { value: number; onChange: (n: n
 
 export function Setup({
   players,
+  groups = [],
+  initialGroupId = null,
   onCancel,
   onStart,
 }: {
   players: Player[]
+  /** The scorer's groups (signed in). A group match is shared with everyone in the group. */
+  groups?: Group[]
+  initialGroupId?: string | null
   onCancel: () => void
-  /** newPlayers: added during setup, not saved yet. */
-  onStart: (s: MatchSetup, newPlayers: Player[]) => void
+  /**
+   * newPlayers: picked players this phone doesn't have yet (typed in, or from the group's list).
+   * addToGroup: players typed in here, to add to the group's player list.
+   */
+  onStart: (s: MatchSetup, newPlayers: Player[], groupId: string | null, addToGroup: Player[]) => void
 }) {
+  const [groupId, setGroupId] = useState<string | null>(initialGroupId)
+  const [roster, setRoster] = useState<Player[] | null>(null)
+  useEffect(() => {
+    setRoster(null)
+    if (!groupId) return
+    let alive = true
+    groupPlayers(groupId).then(
+      (list) => alive && setRoster(list.map(asPlayer)),
+      () => alive && setRoster([]),
+    )
+    return () => {
+      alive = false
+    }
+  }, [groupId])
+  const pool = groupId ? (roster ?? []) : players
   const [teamA, setTeamA] = useState("")
   const [teamB, setTeamB] = useState("")
   const [overs, setOvers] = useState(20)
@@ -66,6 +90,23 @@ export function Setup({
         </Button>
         <h1 className="text-xl font-bold">New match</h1>
       </header>
+
+      {groups.length ? (
+        <section>
+          <SectionLabel>Group</SectionLabel>
+          <Choice
+            options={[{ value: "", label: "No group" }, ...groups.map((g) => ({ value: g.id, label: g.name }))]}
+            value={groupId ?? ""}
+            onChange={(v) => {
+              setGroupId(v || null)
+              setSquads({ A: [], B: [] })
+            }}
+          />
+          <p className="mt-2 text-sm text-muted-foreground">
+            {groupId ? "Everyone in the group can follow this match live and see it in their results. Squads come from the group's players." : "Only you (and anyone you share the link with) will see this match."}
+          </p>
+        </section>
+      ) : null}
 
       <section>
         <SectionLabel>Teams</SectionLabel>
@@ -149,7 +190,7 @@ export function Setup({
           <div className="flex flex-col gap-4">
             <PlayerPicker
               sections={[{ title: `In ${name(adding)}`, players: squads[adding] }]}
-              everyone={[...players, ...created]}
+              everyone={[...pool, ...created]}
               selected={new Set(squads[adding].map((p) => p.id))}
               tagOf={(p) => (inBoth(p.id) ? "Common player" : squads[other(adding)].some((x) => x.id === p.id) ? `In ${name(other(adding))}` : undefined)}
               warningOf={(p) =>
@@ -187,6 +228,8 @@ export function Setup({
                 tossChoice: choice!,
                 squads: { [a]: squads.A.map((p) => p.id), [b]: squads.B.map((p) => p.id) },
               },
+              [...new Map([...squads.A, ...squads.B].filter((p) => !players.some((x) => x.id === p.id)).map((p) => [p.id, p])).values()],
+              groupId,
               created.filter((c) => [...squads.A, ...squads.B].some((p) => p.id === c.id)),
             )
           }

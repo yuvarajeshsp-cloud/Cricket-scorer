@@ -61,4 +61,6 @@ export interface Match extends MatchSetup {
   secret?: string
   /** Last change, for syncing a signed-in scorer's phones (newest wins). */
   updatedAt?: string
+  /** Played in this group: every member sees it (live and finished). */
+  groupId?: string
 }

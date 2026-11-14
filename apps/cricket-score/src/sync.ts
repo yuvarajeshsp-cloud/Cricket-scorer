@@ -21,6 +21,8 @@ interface Row {
   data: Match | Player | null
   updated_at: string
   deleted: boolean
+  /** Set on a pushed group match (or its tombstone): mirrored to group_matches. */
+  groupId?: string
 }
 
 const ms = (iso?: string | null) => (iso ? new Date(iso).getTime() || 0 : 0)
@@ -44,7 +46,11 @@ export function stamp(prev: AppData, next: AppData): AppData {
   let tombstones = next.tombstones
   const gone = (kind: Kind, before: { id: string }[], after: { id: string }[]) => {
     const still = new Set(after.map((x) => x.id))
-    for (const x of before) if (!still.has(x.id)) tombstones = [...tombstones.filter((t) => !(t.kind === kind && t.id === x.id)), { kind, id: x.id, at: now }]
+    for (const x of before)
+      if (!still.has(x.id)) {
+        const groupId = (x as Partial<Match>).groupId
+        tombstones = [...tombstones.filter((t) => !(t.kind === kind && t.id === x.id)), { kind, id: x.id, at: now, ...(groupId ? { groupId } : {}) }]
+      }
     const live = new Set(after.map((x) => `${kind}:${x.id}`))
     if (tombstones.some((t) => live.has(`${t.kind}:${t.id}`))) tombstones = tombstones.filter((t) => !live.has(`${t.kind}:${t.id}`))
   }
@@ -88,14 +94,31 @@ function pending(data: AppData, synced: Map<string, number>): Record<Kind, Row[]
   const out: Record<Kind, Row[]> = { match: [], player: [] }
   const add = (kind: Kind, r: Match | Player) => {
     const at = recordTime(r)
-    if (at > (synced.get(`${kind}:${r.id}`) ?? -1)) out[kind].push({ id: r.id, data: r, updated_at: new Date(at || Date.now()).toISOString(), deleted: false })
+    if (at > (synced.get(`${kind}:${r.id}`) ?? -1))
+      out[kind].push({ id: r.id, data: r, updated_at: new Date(at || Date.now()).toISOString(), deleted: false, groupId: (r as Partial<Match>).groupId })
   }
   data.matches.forEach((m) => add("match", m))
   data.players.forEach((p) => add("player", p))
   for (const t of data.tombstones) {
-    if (ms(t.at) > (synced.get(`${t.kind}:${t.id}`) ?? -1)) out[t.kind].push({ id: t.id, data: null, updated_at: t.at, deleted: true })
+    if (ms(t.at) > (synced.get(`${t.kind}:${t.id}`) ?? -1)) out[t.kind].push({ id: t.id, data: null, updated_at: t.at, deleted: true, groupId: t.groupId })
   }
   return out
+}
+
+/** Group matches also go to the group's shared copy, so every member sees them (deletes too). */
+async function mirrorToGroups(rows: Row[]) {
+  if (!db) return
+  const live = rows.filter((r) => r.groupId && !r.deleted)
+  if (live.length) {
+    const { error } = await db
+      .from("group_matches")
+      .upsert(live.map((r) => ({ group_id: r.groupId, id: r.id, data: r.data, updated_at: r.updated_at })), { onConflict: "group_id,id" })
+    // Left the group since? Their own copy is still saved; don't block syncing over it.
+    if (error && !/row-level security|permission/i.test(error.message)) throw error
+  }
+  for (const r of rows.filter((x) => x.groupId && x.deleted)) {
+    await db.from("group_matches").delete().eq("group_id", r.groupId!).eq("id", r.id)
+  }
 }
 
 export function pruneTombstones(d: AppData): AppData {
@@ -132,6 +155,7 @@ export function useSync(userId: string | null, data: AppData | null, rawUpdate: 
           { onConflict: "user_id,id" },
         )
         if (error) throw error
+        if (kind === "match") await mirrorToGroups(chunk)
         for (const r of chunk) synced.current.set(`${kind}:${r.id}`, ms(r.updated_at))
       }
     }

@@ -18,6 +18,8 @@ import { PlayerProfile, Players } from "./screens/Players"
 import { AccountSheet } from "./components/AccountSheet"
 import { canSignIn, useSession } from "./account"
 import { stamp, useSync } from "./sync"
+import { addMissingGroupPlayers, asPlayer, groupPlayers, useMyGroups } from "./groups"
+import { GroupPage, GroupsSection, JoinGroup } from "./screens/Groups"
 
 type Tab = "home" | "score" | "card" | "players" | "share"
 
@@ -36,7 +38,25 @@ export default function App() {
   const live = hash.match(/^#\/(live|overlay)\/([a-z0-9]+)/)
   // key: a different match code starts a fresh viewer, so the old score never shows.
   if (live) return live[1] === "live" ? <Viewer key={live[2]} matchId={live[2]} /> : <Overlay key={live[2]} matchId={live[2]} />
-  return <ScorerApp />
+  const join = hash.match(/^#\/join\/([a-z0-9]+)/)
+  if (join) return <JoinRoute code={join[1]} />
+  const group = hash.match(/^#\/group\/([0-9a-f-]{36})/)
+  return <ScorerApp groupRoute={group?.[1] ?? null} />
+}
+
+function JoinRoute({ code }: { code: string }) {
+  const session = useSession()
+  if (session === undefined) return null
+  return (
+    <>
+      <JoinGroup code={code} userId={session?.user.id ?? null} onJoined={(id) => (location.hash = `#/group/${id}`)} />
+      <Toaster position="top-center" />
+    </>
+  )
+}
+
+const showGroup = (id: string | null) => {
+  location.hash = id ? `#/group/${id}` : ""
 }
 
 /** Save a picked player, put them in `team` for this match (moving them out of the other team), and add the event. */
@@ -65,7 +85,7 @@ function applyPick(d: AppData, r: PickResult, team: string | null, ev: InningsEv
   return { ...d, players, matches }
 }
 
-function ScorerApp() {
+function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
   const { data, update: rawUpdate } = useStore(store)
   // Every change the scorer makes is stamped (updatedAt / tombstones) so it can sync.
   const update = useCallback((fn: (d: AppData) => AppData) => rawUpdate((prev) => stamp(prev, fn(prev))), [rawUpdate])
@@ -74,8 +94,22 @@ function ScorerApp() {
   const [tab, setTab] = useState<Tab>("home")
   const [setupOpen, setSetupOpen] = useState(false)
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [setupGroup, setSetupGroup] = useState<string | null>(null)
+  const userId = session?.user.id ?? null
+  const myGroups = useMyGroups(userId)
 
   const match = data?.matches.find((m) => m.id === data.currentId) ?? null
+  // In a group match, the group's players are offered too (not just players saved on this phone).
+  const [groupRoster, setGroupRoster] = useState<Player[]>([])
+  useEffect(() => {
+    setGroupRoster([])
+    if (!match?.groupId || !userId) return
+    let alive = true
+    groupPlayers(match.groupId).then((l) => alive && setGroupRoster(l.map(asPlayer)), () => undefined)
+    return () => {
+      alive = false
+    }
+  }, [match?.groupId, userId])
   const state = useMemo(() => (match ? computeMatch(match) : null), [match])
   const snapshot = useMemo(() => (match && state ? toSnapshot(match, state) : null), [match, state])
 
@@ -114,7 +148,7 @@ function ScorerApp() {
       return { ...m, innings }
     })
 
-  const startMatch = (s: MatchSetup, created: Player[]) => {
+  const startMatch = (s: MatchSetup, created: Player[], groupId: string | null = null, addToGroup: Player[] = []) => {
     const [bat, bowl] = battingFirst(s)
     const all = [...data.players, ...created]
     const roster = Object.fromEntries(
@@ -122,7 +156,17 @@ function ScorerApp() {
         .flat()
         .map((id) => [id, all.find((p) => p.id === id)?.name ?? id]),
     )
-    const m: Match = { ...s, id: newId(), secret: newSecret(), createdAt: new Date().toISOString(), roster, innings: [{ batting: bat, bowling: bowl, events: [] }] }
+    const m: Match = {
+      ...s,
+      id: newId(),
+      secret: newSecret(),
+      createdAt: new Date().toISOString(),
+      roster,
+      innings: [{ batting: bat, bowling: bowl, events: [] }],
+      ...(groupId ? { groupId } : {}),
+    }
+    if (groupId && addToGroup.length)
+      addMissingGroupPlayers(groupId, addToGroup).catch((e) => toast.error(`Couldn't add new players to the group: ${e instanceof Error ? e.message : e}`))
     update((d) => ({ ...d, players: [...d.players, ...created], matches: [...d.matches, m], currentId: m.id }))
     setSetupOpen(false)
     setTab("score")
@@ -159,7 +203,13 @@ function ScorerApp() {
   if (setupOpen) {
     return (
       <main className="mx-auto max-w-lg p-4">
-        <Setup players={data.players} onCancel={() => setSetupOpen(false)} onStart={startMatch} />
+        <Setup
+          players={data.players}
+          groups={myGroups.groups ?? []}
+          initialGroupId={setupGroup}
+          onCancel={() => setSetupOpen(false)}
+          onStart={startMatch}
+        />
       </main>
     )
   }
@@ -167,6 +217,29 @@ function ScorerApp() {
   const needsMatch = (tab === "score" || tab === "card" || tab === "share") && (!match || !state)
   const shown: Tab = needsMatch ? "home" : tab
   const profile = profileId ? data.players.find((p) => p.id === profileId) : undefined
+  const openGroup = groupRoute && userId ? myGroups.groups?.find((g) => g.id === groupRoute) : undefined
+
+  if (openGroup && userId) {
+    return (
+      <>
+        <main className="mx-auto max-w-lg p-4">
+          <GroupPage
+            key={openGroup.id}
+            group={openGroup}
+            userId={userId}
+            onBack={() => showGroup(null)}
+            onChanged={() => void myGroups.reload()}
+            onStartMatch={() => {
+              setSetupGroup(openGroup.id)
+              setSetupOpen(true)
+              showGroup(null)
+            }}
+          />
+        </main>
+        <Toaster position="top-center" />
+      </>
+    )
+  }
 
   return (
     <>
@@ -186,9 +259,24 @@ function ScorerApp() {
               <Home
                 matches={data.matches}
                 currentId={data.currentId}
-                onNew={() => setSetupOpen(true)}
+                onNew={() => {
+                  setSetupGroup(null)
+                  setSetupOpen(true)
+                }}
                 onOpen={openMatch}
                 onDelete={remove}
+                groups={
+                  canSignIn ? (
+                    <GroupsSection
+                      signedIn={Boolean(userId)}
+                      groups={myGroups.groups}
+                      onOpen={(id) => showGroup(id)}
+                      onCreated={(g) => {
+                        void myGroups.reload().then(() => showGroup(g.id))
+                      }}
+                    />
+                  ) : null
+                }
                 account={
                   canSignIn ? (
                     <AccountSheet session={session} status={sync.status} lastSynced={sync.lastSynced} error={sync.error} onSyncNow={sync.syncNow} />
@@ -200,10 +288,14 @@ function ScorerApp() {
               <Scoring
                 match={match}
                 state={state}
-                players={data.players}
+                players={groupRoster.length ? [...data.players, ...groupRoster.filter((g) => !data.players.some((p) => p.id === g.id))] : data.players}
                 liveLink={liveUrl(match.id)}
                 onEvent={addEvent}
-                onPlayer={(r, team, ev) => update((d) => applyPick(d, r, team, ev))}
+                onPlayer={(r, team, ev) => {
+                  update((d) => applyPick(d, r, team, ev))
+                  if (match.groupId && r.isNew && !r.player.guest)
+                    addMissingGroupPlayers(match.groupId, [r.player]).catch(() => undefined)
+                }}
                 onUndo={undo}
                 onNextInnings={nextInnings}
                 onNewMatch={() => setSetupOpen(true)}

@@ -8,9 +8,10 @@ export const ANDROID_PACKAGE = "com.rajesh.cricketscore"
 /**
  * The viewer route in any link we hand out, as this app's hash route:
  *   https://site/live/<id>, https://site/#/live/<id>, cricketscore://live/<id>  →  #/live/<id>
+ *   https://site/join/<code> (group invite)  →  #/join/<code>
  */
 export function routeFromUrl(url: string): string | null {
-  const m = url.match(/\/(live|overlay)\/([a-z0-9]+)\/?(?:[?#]|$)/)
+  const m = url.match(/\/(live|overlay|join)\/([a-z0-9]+)\/?(?:[?#]|$)/)
   return m ? `#/${m[1]}/${m[2]}` : null
 }
 

@@ -7,6 +7,8 @@ export interface Tombstone {
   kind: "match" | "player"
   id: string
   at: string
+  /** For a group match: also remove the group's copy. */
+  groupId?: string
 }
 
 export interface AppData {
