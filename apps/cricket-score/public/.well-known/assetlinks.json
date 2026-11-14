@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rajesh.cricketscore",
+      "sha256_cert_fingerprints": [
+        "AD:EB:01:A4:95:71:C9:0D:B4:E0:96:97:80:D1:A3:C8:4B:B7:2C:0A:42:CE:27:BA:F0:89:6D:E9:5E:74:09:82"
+      ]
+    }
+  }
+]

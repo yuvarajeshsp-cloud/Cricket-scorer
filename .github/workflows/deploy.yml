@@ -1,0 +1,38 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build site
+        run: npm run build
+        env:
+          # Public values: they ship inside the website's JavaScript anyway.
+          VITE_SUPABASE_URL: https://lcqmmmblwhcwwwchycpe.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_8waK6IWBy_V_RzsjYOAYuA_TimdNP_A
+          VITE_PUBLIC_URL: https://cricket-score-6k3.pages.dev
+      - name: Deploy to Cloudflare Pages (project cricket-score)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 0b6ad20c7f6039affbe72aa1462fbdc8
+          command: pages deploy apps/cricket-score/dist --project-name cricket-score --branch main --commit-dirty=true

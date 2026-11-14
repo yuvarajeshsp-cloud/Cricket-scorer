@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cricket Score</string>
+    <string name="title_activity_main">Cricket Score</string>
+    <string name="package_name">com.rajesh.cricketscore</string>
+    <string name="custom_url_scheme">com.rajesh.cricketscore</string>
+</resources>

@@ -1,0 +1,6 @@
+# Netlify: set the site's base directory to apps/cricket-score.
+# Environment variables (Site settings > Environment variables):
+#   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_PUBLIC_URL (this site's address)
+[build]
+  command = "npx vite build"
+  publish = "dist"

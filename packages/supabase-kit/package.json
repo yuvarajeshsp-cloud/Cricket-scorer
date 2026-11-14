@@ -1,0 +1,16 @@
+{
+  "name": "@rajesh-hub/supabase-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Supabase client, audit log, edge-function errors, feature flags, and edge functions for users, OTP and account deletion.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./functions/*": "./functions/*",
+    "./netlify/*": "./netlify/*",
+    "./cloudflare/*": "./cloudflare/*"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4"
+  }
+}
