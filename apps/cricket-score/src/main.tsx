@@ -13,7 +13,7 @@ setupDeepLinks()
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider defaultTheme="system">
-      <BrandProvider value={{ companyName: "Cricket Score", companyLogo: null }}>
+      <BrandProvider value={{ companyName: "Cricket Score", companyLogo: "/favicon.svg" }}>
         <App />
       </BrandProvider>
     </ThemeProvider>

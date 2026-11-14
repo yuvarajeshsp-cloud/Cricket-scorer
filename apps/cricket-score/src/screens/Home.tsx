@@ -27,9 +27,12 @@ export function Home({
   return (
     <div className="flex flex-col gap-5 pb-24">
       <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal">Live scoring</p>
-          <h1 className="text-2xl font-black tracking-tight">Cricket Score</h1>
+        <div className="flex items-center gap-3">
+          <img src="/favicon.svg" alt="" className="size-12 rounded-2xl shadow-sm" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-teal">Live scoring</p>
+            <h1 className="text-2xl font-black tracking-tight">Cricket Score</h1>
+          </div>
         </div>
         <ModeToggle />
       </header>
