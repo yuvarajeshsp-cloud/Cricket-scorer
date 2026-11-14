@@ -1,5 +1,5 @@
 import type { Match, Player } from "./types"
-import { oversText, runRate, type MatchState, type ScorecardData } from "./score"
+import { oversText, plural, runRate, type MatchState, type ScorecardData } from "./score"
 import { avg, bestBat, bestBowl, econ, sr, type CareerStats } from "./stats"
 
 /** Short live score for a WhatsApp message. */
@@ -31,7 +31,7 @@ export function liveScoreText(match: Match, st: MatchState, link?: string): stri
 /** Full scorecard: both innings, top batters and bowlers. */
 export function scorecardText(card: ScorecardData): string {
   const { match } = card
-  const lines = [`🏏 *${match.teamA} vs ${match.teamB}* · ${match.overs} overs`]
+  const lines = [`🏏 *${match.teamA} vs ${match.teamB}* · ${plural(match.overs, "over")}`]
   if (card.result) lines.push(`🏆 *${card.result}*`)
   for (const inn of card.innings) {
     const ex = inn.extras.wd + inn.extras.nb + inn.extras.b + inn.extras.lb

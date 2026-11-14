@@ -4,6 +4,7 @@ import { Button, ModeToggle } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
 import { computeMatch, oversText } from "../engine/score"
 import { forgetWatched, useWatched } from "../watching"
+import { plural } from "../engine/score"
 
 export function Home({
   matches,
@@ -115,7 +116,7 @@ function MatchRow({ match, live, onOpen, onDelete }: { match: Match; live?: bool
             </span>
           ) : null}
           <span className="text-xs text-muted-foreground">
-            {new Date(match.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {match.overs} overs
+            {new Date(match.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {plural(match.overs, "over")}
           </span>
         </span>
         {st.innings.map((s, i) => (

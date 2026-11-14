@@ -3,7 +3,7 @@ import { ArrowLeft, Radio, Smartphone, Zap } from "lucide-react"
 import { Capacitor } from "@capacitor/core"
 import { cn, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
 import { Scorecard } from "./Scorecard"
-import type { LiveSnapshot } from "../engine/score"
+import { plural, type LiveSnapshot } from "../engine/score"
 import { live } from "../live"
 import { BallChip, EmptyBall } from "../components/bits"
 import { openInAppLink } from "../deep-link"
@@ -105,7 +105,7 @@ export function Viewer({ matchId }: { matchId: string }) {
           </p>
           <p className="text-right">
             <span className="block text-3xl font-bold tabular-nums">{snap.overs}</span>
-            <span className="text-xs text-white/70">of {snap.maxOvers} overs</span>
+            <span className="text-xs text-white/70">of {plural(snap.maxOvers, "over")}</span>
           </p>
         </div>
         <p className="mt-3 text-sm text-white/80">

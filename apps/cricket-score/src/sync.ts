@@ -105,7 +105,11 @@ function pending(data: AppData, synced: Map<string, number>): Record<Kind, Row[]
   return out
 }
 
-/** Group matches also go to the group's shared copy, so every member sees them (deletes too). */
+/**
+ * Group matches also go to the group's shared copy, so every member sees them.
+ * Deleting a match on your phone does NOT remove it from the group: the group keeps
+ * its history, and only a group admin can delete a group match (from the group page).
+ */
 async function mirrorToGroups(rows: Row[]) {
   if (!db) return
   const live = rows.filter((r) => r.groupId && !r.deleted)
@@ -115,9 +119,6 @@ async function mirrorToGroups(rows: Row[]) {
       .upsert(live.map((r) => ({ group_id: r.groupId, id: r.id, data: r.data, updated_at: r.updated_at })), { onConflict: "group_id,id" })
     // Left the group since? Their own copy is still saved; don't block syncing over it.
     if (error && !/row-level security|permission/i.test(error.message)) throw error
-  }
-  for (const r of rows.filter((x) => x.groupId && x.deleted)) {
-    await db.from("group_matches").delete().eq("group_id", r.groupId!).eq("id", r.id)
   }
 }
 

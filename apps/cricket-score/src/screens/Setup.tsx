@@ -5,6 +5,7 @@ import type { MatchSetup, Player } from "../engine/types"
 import { Choice, SectionLabel, Sheet } from "../components/bits"
 import { PlayerPicker } from "../components/PlayerPicker"
 import { newPlayer } from "../store"
+import { plural } from "../engine/score"
 import { asPlayer, groupPlayers, type Group } from "../groups"
 
 const OVER_PRESETS = [5, 6, 8, 10, 20, 50]
@@ -130,7 +131,7 @@ export function Setup({
         <SectionLabel>Players per side</SectionLabel>
         <div className="flex items-center justify-between rounded-2xl bg-card p-3 ring-1 ring-border">
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="size-4" /> All out at {perSide - 1} wickets
+            <Users className="size-4" /> All out at {plural(perSide - 1, "wicket")}
           </span>
           <Stepper value={perSide} onChange={setPerSide} min={2} max={15} />
         </div>

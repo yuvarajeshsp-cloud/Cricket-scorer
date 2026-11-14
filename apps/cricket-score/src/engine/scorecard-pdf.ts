@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf"
-import { oversText, runRate, strikeRate, type InningsCard, type ScorecardData } from "./score"
+import { oversText, plural, runRate, strikeRate, type InningsCard, type ScorecardData } from "./score"
 
 type RGB = [number, number, number]
 
@@ -75,11 +75,15 @@ export function scorecardPdf(card: ScorecardData): Blob {
   text("SCORECARD", M, 11, { size: 9, bold: true, color: [255, 255, 255] })
   text(fit(`${match.teamA} vs ${match.teamB}`, W), M, 21, { size: 18, bold: true, color: [255, 255, 255] })
   const date = new Date(match.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
-  text(`${match.overs} overs · ${match.playersPerSide} a side · ${date}`, M, 29, { size: 9, color: [255, 255, 255] })
+  text(`${plural(match.overs, "over")} · ${match.playersPerSide} a side · ${date}`, M, 29, { size: 9, color: [255, 255, 255] })
   y = 42
   if (card.result) {
     text(card.result, M, y, { size: 13, bold: true, color: teal })
     y += 8
+  }
+  if (card.award) {
+    text(`Player of the match: ${card.award.name}  ${card.award.line}`, M, y, { size: 10, bold: true, color: token("gold") })
+    y += 7
   }
   const toss = `${match.tossWinner} won the toss and chose to ${match.tossChoice}`
   text(toss, M, y, { size: 9, color: GREY_TEXT })

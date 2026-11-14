@@ -1,4 +1,5 @@
 import type { DismissalKind, Extra, Innings, InningsEvent, Match } from "./types"
+import { playerOfMatch } from "./awards"
 
 export interface BatterLine {
   id: string
@@ -66,6 +67,9 @@ export const DISMISSALS: { kind: DismissalKind; label: string; bowlerCredit: boo
   { kind: "stumped", label: "Stumped", bowlerCredit: true },
   { kind: "hit-wicket", label: "Hit wicket", bowlerCredit: true },
 ]
+
+/** "1 over", "5 overs" */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 export function oversText(legalBalls: number): string {
   return `${Math.floor(legalBalls / 6)}.${legalBalls % 6}`
@@ -310,6 +314,8 @@ export interface ScorecardData {
   match: Pick<Match, "teamA" | "teamB" | "overs" | "playersPerSide" | "tossWinner" | "tossChoice" | "createdAt">
   innings: InningsCard[]
   result?: string
+  /** Player of the match, once it's finished. */
+  award?: { name: string; line: string }
 }
 
 export interface InningsCard {
@@ -337,6 +343,7 @@ export function toScorecard(match: Match, st: MatchState): ScorecardData {
       createdAt: match.createdAt,
     },
     result: st.result,
+    ...(st.result ? awardOf(match) : {}),
     innings: st.innings.map((inn) => {
       const atCrease = new Set(inn.crease.filter(Boolean))
       return {
@@ -363,6 +370,11 @@ export function toScorecard(match: Match, st: MatchState): ScorecardData {
       }
     }),
   }
+}
+
+function awardOf(match: Match): { award?: ScorecardData["award"] } {
+  const a = playerOfMatch(match)
+  return a ? { award: { name: a.name, line: a.line } } : {}
 }
 
 /** The summary viewers receive after every ball, with the full scorecard for the Scorecard tab. */

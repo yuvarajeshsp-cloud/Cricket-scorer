@@ -3,7 +3,7 @@ import { FileDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button, cn, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
 import { shareFile } from "@rajesh-hub/native"
-import { oversText, runRate, strikeRate, type ScorecardData } from "../engine/score"
+import { oversText, plural, runRate, strikeRate, type ScorecardData } from "../engine/score"
 import { BallChip } from "../components/bits"
 import { WhatsAppButton } from "../components/WhatsAppButton"
 import { scorecardText } from "../engine/share-text"
@@ -21,9 +21,15 @@ export function Scorecard({ card, onOpenPlayer }: { card: ScorecardData; onOpenP
       <header>
         <h1 className="text-xl font-bold">Scorecard</h1>
         <p className="text-sm text-muted-foreground">
-          {match.teamA} vs {match.teamB} · {match.overs} overs
+          {match.teamA} vs {match.teamB} · {plural(match.overs, "over")}
         </p>
         {card.result ? <p className="mt-1 font-semibold text-teal">{card.result}</p> : null}
+        {card.award ? (
+          <p className="mt-1 text-sm">
+            <span className="font-semibold text-gold">★ Player of the match:</span> <span className="font-semibold">{card.award.name}</span>{" "}
+            <span className="text-muted-foreground">{card.award.line}</span>
+          </p>
+        ) : null}
         <WhatsAppButton text={scorecardText(card)} className="mt-3 h-11 w-full rounded-2xl" label="Share scorecard on WhatsApp" />
         <PdfButton card={card} />
       </header>

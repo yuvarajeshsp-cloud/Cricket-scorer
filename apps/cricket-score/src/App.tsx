@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { House, ListOrdered, Radio, Target, Users } from "lucide-react"
 import { toast } from "sonner"
 import { BottomNav, Toaster } from "@rajesh-hub/ui"
 import { useStore } from "@rajesh-hub/offline-store"
 import type { InningsEvent, Match, MatchSetup, Player } from "./engine/types"
-import { battingFirst, computeMatch, toScorecard, toSnapshot } from "./engine/score"
+import { battingFirst, computeMatch, plural, toScorecard, toSnapshot } from "./engine/score"
 import { live, liveUrl, newSecret } from "./live"
 import { newId, newPlayer, store, type AppData } from "./store"
 import type { PickResult } from "./components/PlayerPicker"
@@ -20,6 +20,9 @@ import { canSignIn, useSession } from "./account"
 import { stamp, useSync } from "./sync"
 import { addMissingGroupPlayers, asPlayer, groupPlayers, useMyGroups } from "./groups"
 import { GroupPage, GroupsSection, JoinGroup } from "./screens/Groups"
+import { postGroupEvent, useGroupAlerts } from "./alerts"
+import { liveScoreText, whatsappUrl } from "./engine/share-text"
+import { playerOfMatch } from "./engine/awards"
 
 type Tab = "home" | "score" | "card" | "players" | "share"
 
@@ -113,6 +116,45 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
   const state = useMemo(() => (match ? computeMatch(match) : null), [match])
   const snapshot = useMemo(() => (match && state ? toSnapshot(match, state) : null), [match, state])
 
+  // Group alerts: hear about other members' matches, and announce this phone's group matches.
+  const groupNames = useMemo(() => Object.fromEntries((myGroups.groups ?? []).map((g) => [g.id, g.name])), [myGroups.groups])
+  useGroupAlerts(userId, groupNames)
+  const posted = useRef(new Set<string>())
+  const started = Boolean(match?.innings.some((i) => i.events.some((e) => e.type === "ball")))
+  const result = state?.result
+  useEffect(() => {
+    if (!userId || !match?.groupId || !started) return
+    const key = `${match.id}:started`
+    if (posted.current.has(key)) return
+    posted.current.add(key)
+    const title = `${match.teamA} vs ${match.teamB} has started`
+    postGroupEvent(match.groupId, match.id, "started", title, `${plural(match.overs, "over")} · tap Watch to follow live`)
+      .then((isNew) => {
+        if (!isNew) return
+        toast(`Everyone in ${groupNames[match.groupId!] ?? "the group"} has been told the match started.`, {
+          duration: 8000,
+          action: {
+            label: "Tell on WhatsApp",
+            onClick: () => {
+              const st = computeMatch(match)
+              window.open(whatsappUrl(liveScoreText(match, st, liveUrl(match.id))), "_blank")
+            },
+          },
+        })
+      })
+      .catch(() => posted.current.delete(key))
+  }, [userId, match?.id, match?.groupId, started])
+  useEffect(() => {
+    if (!userId || !match?.groupId || !result) return
+    const key = `${match.id}:finished`
+    if (posted.current.has(key)) return
+    posted.current.add(key)
+    const award = playerOfMatch(match)
+    postGroupEvent(match.groupId, match.id, "finished", `${match.teamA} vs ${match.teamB}: ${result}`, award ? `Player of the match: ${award.name} (${award.line})` : undefined).catch(() =>
+      posted.current.delete(key),
+    )
+  }, [userId, match?.id, match?.groupId, result])
+
   // Every change goes out to viewers.
   useEffect(() => {
     if (snapshot && match?.secret) live.publish(snapshot, match.secret)
@@ -182,7 +224,7 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
     const gone = data.matches.find((m) => m.id === id)
     update((d) => ({ ...d, matches: d.matches.filter((m) => m.id !== id), currentId: d.currentId === id ? null : d.currentId }))
     if (gone)
-      toast("Match deleted", {
+      toast(gone.groupId ? "Deleted from this phone. It stays in the group's results." : "Match deleted", {
         action: { label: "Undo", onClick: () => update((d) => ({ ...d, matches: [...d.matches, gone] })) },
       })
   }

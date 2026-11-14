@@ -2,7 +2,7 @@ import { useState } from "react"
 import { ArrowLeftRight, LogOut, MoreHorizontal, Radio, Trophy, Undo2, Zap } from "lucide-react"
 import { Badge, Button, cn } from "@rajesh-hub/ui"
 import type { DismissalKind, Extra, InningsEvent, Match, Player } from "../engine/types"
-import { DISMISSALS, oversText, runRate, strikeRate, type MatchState, toScorecard } from "../engine/score"
+import { DISMISSALS, oversText, plural, runRate, strikeRate, type MatchState, toScorecard } from "../engine/score"
 import { isCommon, teamsOf } from "../engine/stats"
 import { liveScoreText, scorecardText } from "../engine/share-text"
 import { BallChip, Choice, EmptyBall, PadButton, SectionLabel, Sheet } from "../components/bits"
@@ -57,7 +57,7 @@ export function Scoring(props: ScoringProps) {
         <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/5" />
         <div className="flex items-center justify-between gap-2 text-xs font-medium text-white/75">
           <span className="truncate">
-            {inningsNo === 1 ? "1st innings" : "2nd innings"} · {match.overs} overs
+            {inningsNo === 1 ? "1st innings" : "2nd innings"} · {plural(match.overs, "over")}
           </span>
           <span className="flex shrink-0 gap-1.5">
             <WhatsAppButton text={liveScoreText(match, state, liveLink)} className="h-7 rounded-full bg-white/15 px-2.5 text-xs text-white hover:bg-white/25" label="Share" />
@@ -158,7 +158,7 @@ export function Scoring(props: ScoringProps) {
             <>
               <p className="text-lg font-bold">Innings break</p>
               <p className="text-muted-foreground">
-                {cur.bowling} need <span className="font-bold text-foreground">{cur.runs + 1}</span> to win from {match.overs} overs
+                {cur.bowling} need <span className="font-bold text-foreground">{cur.runs + 1}</span> to win from {plural(match.overs, "over")}
               </p>
               <Button className="h-12 w-full rounded-2xl text-base font-bold" onClick={onNextInnings}>
                 Start 2nd innings
@@ -519,7 +519,8 @@ function PlayerSheet({ match, state, players, onPlayer, onUndo, canUndo }: Scori
       common: "Make common to both teams",
     }
   }
-  const guestName = isBatter ? `Batter ${cur.batters.length + 1}` : `Bowler ${cur.bowlers.length + 1}`
+  // Team name first, so placeholders from the two sides never share a name ("Lions batter 3", "Tigers bowler 1").
+  const guestName = isBatter ? `${team} batter ${cur.batters.length + 1}` : `${team} bowler ${cur.bowlers.length + 1}`
 
   return (
     <Sheet open={open} onOpenChange={() => {}} dismissible={false} title={title} description={`${team} · ${isBatter ? "batting" : "bowling"}`}>

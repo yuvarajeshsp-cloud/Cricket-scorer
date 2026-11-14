@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
 import QRCode from "qrcode"
-import { ArrowLeft, Check, ChevronRight, Copy, LogOut, MessageCircle, Pencil, Phone, Plus, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
+import { ArrowLeft, Bell, Check, ChevronRight, Copy, LogOut, MessageCircle, Pencil, Phone, Plus, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Button, Input, Label, Spinner, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
-import { computeMatch, oversText, toScorecard } from "../engine/score"
-import { careerStats } from "../engine/stats"
+import { computeMatch, oversText, plural, toScorecard } from "../engine/score"
+import { careerStats, sr } from "../engine/stats"
+import { econText, inSeason, leaderboards, playerOfMatch, seasonsOf, type Leader } from "../engine/awards"
 import { whatsappUrl } from "../engine/share-text"
 import { SectionLabel, Sheet } from "../components/bits"
 import { SignIn } from "../components/AccountSheet"
+import { useNotifyPermission } from "../alerts"
 import { Scorecard } from "./Scorecard"
 import { Avatar, PlayerProfile } from "./Players"
 import {
@@ -17,6 +19,7 @@ import {
   claimPlayer,
   createGroup,
   deleteGroup,
+  deleteGroupMatch,
   groupForInvite,
   inviteUrl,
   joinGroup,
@@ -39,6 +42,7 @@ export function GroupsSection({ signedIn, groups, onOpen, onCreated }: { signedI
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
+  const notify = useNotifyPermission()
 
   if (!signedIn) {
     return (
@@ -97,6 +101,11 @@ export function GroupsSection({ signedIn, groups, onOpen, onCreated }: { signedI
           No groups yet. Create one for your team or friends, then share the invite link on WhatsApp.
         </p>
       )}
+      {groups?.length && notify.perm === "default" ? (
+        <Button variant="outline" className="h-11 rounded-2xl" onClick={() => void notify.ask()}>
+          <Bell /> Alert me when a group match starts or ends
+        </Button>
+      ) : null}
 
       <Sheet open={creating} onOpenChange={setCreating} title="New group" description="Everyone you invite sees the group's matches, live scores, players and stats.">
         <form
@@ -140,7 +149,7 @@ export function GroupPage({
   onChanged: () => void
 }) {
   const { players, matches, members, error, reload, setPlayers } = useGroupData(group.id)
-  const [tab, setTab] = useState<"matches" | "players" | "invite">("matches")
+  const [tab, setTab] = useState<"matches" | "leaders" | "players" | "invite">("matches")
   const [openMatch, setOpenMatch] = useState<GroupMatch | null>(null)
   const [profile, setProfile] = useState<GroupPlayer | null>(null)
   const isAdmin = group.role === "admin"
@@ -158,6 +167,25 @@ export function GroupPage({
           <ArrowLeft /> {group.name}
         </Button>
         <Scorecard card={toScorecard(openMatch.data, st)} />
+        {isAdmin ? (
+          <Button
+            variant="ghost"
+            className="text-destructive"
+            onClick={async () => {
+              if (!confirm("Delete this match from the group for everyone? It also leaves everyone's stats here.")) return
+              try {
+                await deleteGroupMatch(group.id, openMatch.id)
+                toast("Match deleted from the group")
+                setOpenMatch(null)
+                void reload()
+              } catch (e) {
+                toast.error(errText(e))
+              }
+            }}
+          >
+            <Trash2 /> Delete from group (admins only)
+          </Button>
+        ) : null}
       </div>
     )
   }
@@ -210,8 +238,9 @@ export function GroupPage({
       </Button>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="grid h-11 w-full grid-cols-3 rounded-2xl">
+        <TabsList className="grid h-11 w-full grid-cols-4 rounded-2xl">
           <TabsTrigger value="matches" className="rounded-xl">Matches</TabsTrigger>
+          <TabsTrigger value="leaders" className="rounded-xl">Leaders</TabsTrigger>
           <TabsTrigger value="players" className="rounded-xl">Players</TabsTrigger>
           <TabsTrigger value="invite" className="rounded-xl">Invite</TabsTrigger>
         </TabsList>
@@ -220,6 +249,7 @@ export function GroupPage({
       {error ? <p className="rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p> : null}
 
       {tab === "matches" ? <GroupMatches matches={matches} onOpen={setOpenMatch} /> : null}
+      {tab === "leaders" ? <GroupLeaders players={players} matches={allMatches} onOpen={setProfile} /> : null}
       {tab === "players" ? (
         <GroupPlayers group={group} userId={userId} players={players} matches={allMatches} setPlayers={setPlayers} onOpen={setProfile} reload={reload} />
       ) : null}
@@ -268,7 +298,7 @@ function MatchCard({ m, st, live, onClick }: { m: Match; st: ReturnType<typeof c
     <button type="button" onClick={onClick} className="flex flex-col gap-1.5 rounded-3xl bg-card p-4 text-left ring-1 ring-border">
       <span className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          {date} · {m.overs} overs
+          {date} · {plural(m.overs, "over")}
         </span>
         {live ? (
           <span className="flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 font-bold text-white">
@@ -286,6 +316,7 @@ function MatchCard({ m, st, live, onClick }: { m: Match; st: ReturnType<typeof c
         )
       })}
       <span className="text-sm text-teal">{st.result ?? (live ? "Tap to watch live" : "Not started yet")}</span>
+      {st.result ? <AwardLine m={m} /> : null}
     </button>
   )
 }
@@ -709,3 +740,106 @@ export function JoinGroup({ code, userId, onJoined }: { code: string; userId: st
   )
 }
 
+
+function AwardLine({ m }: { m: Match }) {
+  const a = useMemo(() => playerOfMatch(m), [m])
+  if (!a) return null
+  return (
+    <span className="text-xs">
+      <span className="font-semibold text-gold">★</span> <span className="font-semibold">{a.name}</span> <span className="text-muted-foreground">{a.line}</span>
+    </span>
+  )
+}
+
+/** Season leaderboards for a group: runs, wickets, sixes, fielding and player-of-the-match awards. */
+function GroupLeaders({ players, matches, onOpen }: { players: GroupPlayer[] | null; matches: Match[]; onOpen: (p: GroupPlayer) => void }) {
+  const seasons = useMemo(() => seasonsOf(matches), [matches])
+  const [season, setSeason] = useState<number | null>(() => new Date().getFullYear())
+  const year = season !== null && !seasons.includes(season) ? (seasons[0] ?? null) : season
+  const board = useMemo(
+    () => (players ? leaderboards(players, matches.filter((m) => inSeason(m, year))) : null),
+    [players, matches, year],
+  )
+  if (!board)
+    return (
+      <div className="flex justify-center p-6">
+        <Spinner />
+      </div>
+    )
+  const open = (id: string) => {
+    const p = players?.find((x) => x.id === id)
+    if (p) onOpen(p)
+  }
+  const List = ({ title, rows, value, sub }: { title: string; rows: Leader[]; value: (l: Leader) => string; sub: (l: Leader) => string }) =>
+    rows.length ? (
+      <section className="overflow-hidden rounded-3xl bg-card ring-1 ring-border">
+        <p className="bg-secondary px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+        {rows.map((l, i) => (
+          <button key={l.id} type="button" onClick={() => open(l.id)} className="flex w-full items-center gap-3 border-t px-4 py-2.5 text-left first:border-0">
+            <span className={i === 0 ? "w-5 font-black text-gold" : "w-5 font-semibold text-muted-foreground"}>{i + 1}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{l.name}</span>
+              <span className="block text-xs text-muted-foreground">{sub(l)}</span>
+            </span>
+            <span className="text-lg font-bold tabular-nums">{value(l)}</span>
+          </button>
+        ))}
+      </section>
+    ) : null
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {seasons.map((y) => (
+          <Button key={y} size="sm" variant={year === y ? "default" : "outline"} className="rounded-full" onClick={() => setSeason(y)}>
+            {y}
+          </Button>
+        ))}
+        <Button size="sm" variant={year === null ? "default" : "outline"} className="rounded-full" onClick={() => setSeason(null)}>
+          All time
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {board.matches} match{board.matches === 1 ? "" : "es"} {year === null ? "in all" : `in ${year}`}. Tap a player for their full record.
+      </p>
+      {!board.runs.length && !board.wickets.length ? (
+        <p className="rounded-3xl border-2 border-dashed p-6 text-center text-sm text-muted-foreground">
+          {board.matches
+            ? "No group players have scored yet. Leaderboards count the group's players (Players tab), not quick-pick placeholders like “Team A batter 1”."
+            : "No scores yet. Leaderboards fill in as the group plays."}
+        </p>
+      ) : null}
+      {board.awards.length ? (
+        <section className="overflow-hidden rounded-3xl bg-card ring-1 ring-border">
+          <p className="bg-secondary px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">★ Player of the match awards</p>
+          {board.awards.map((a, i) => (
+            <button key={a.id} type="button" onClick={() => open(a.id)} className="flex w-full items-center gap-3 border-t px-4 py-2.5 text-left first:border-0">
+              <span className={i === 0 ? "w-5 font-black text-gold" : "w-5 font-semibold text-muted-foreground"}>{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{a.name}</span>
+              <span className="text-lg font-bold tabular-nums">{a.count}</span>
+            </button>
+          ))}
+        </section>
+      ) : null}
+      <List
+        title="Most runs"
+        rows={board.runs}
+        value={(l) => String(l.stats.batting.runs)}
+        sub={(l) => `${l.stats.batting.innings} inns · SR ${sr(l.stats.batting.runs, l.stats.batting.balls)} · best ${l.stats.batting.best ? `${l.stats.batting.best.runs}${l.stats.batting.best.notOut ? "*" : ""}` : "—"}`}
+      />
+      <List
+        title="Most wickets"
+        rows={board.wickets}
+        value={(l) => String(l.stats.bowling.wickets)}
+        sub={(l) => `Econ ${econText(l.stats.bowling.runs, l.stats.bowling.balls)} · best ${l.stats.bowling.best ? `${l.stats.bowling.best.wickets}/${l.stats.bowling.best.runs}` : "—"}`}
+      />
+      <List title="Most sixes" rows={board.sixes} value={(l) => String(l.stats.batting.sixes)} sub={(l) => `${l.stats.batting.fours} fours`} />
+      <List
+        title="Fielding (catches, run outs, stumpings)"
+        rows={board.catches}
+        value={(l) => String(l.stats.fielding.catches + l.stats.fielding.runOuts + l.stats.fielding.stumpings)}
+        sub={(l) => `${l.stats.fielding.catches} ct · ${l.stats.fielding.runOuts} ro · ${l.stats.fielding.stumpings} st`}
+      />
+    </div>
+  )
+}
