@@ -30,6 +30,9 @@ jobs:
           VITE_SUPABASE_URL: https://lcqmmmblwhcwwwchycpe.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_8waK6IWBy_V_RzsjYOAYuA_TimdNP_A
           VITE_PUBLIC_URL: https://cricket-score-6k3.pages.dev
+      - name: Add the Android APK download to the site
+        # Kept out of public/ so it is never packed inside the app itself.
+        run: cp apps/cricket-score/releases/cricket-score.apk apps/cricket-score/dist/cricket-score.apk
       - name: Deploy to Cloudflare Pages (project cricket-score)
         uses: cloudflare/wrangler-action@v3
         with:

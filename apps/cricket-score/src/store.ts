@@ -2,13 +2,21 @@ import { createStore } from "@rajesh-hub/offline-store"
 import type { Match, Player } from "./engine/types"
 import { newSecret } from "./live"
 
+/** A deleted match or player, remembered so the delete also reaches the scorer's other phones. */
+export interface Tombstone {
+  kind: "match" | "player"
+  id: string
+  at: string
+}
+
 export interface AppData {
   players: Player[]
   matches: Match[]
   currentId: string | null
+  tombstones: Tombstone[]
 }
 
-const empty = (): AppData => ({ players: [], matches: [], currentId: null })
+const empty = (): AppData => ({ players: [], matches: [], currentId: null, tombstones: [] })
 
 /** Matches saved before players had ids used names directly; keep them readable. */
 function upgradeMatch(raw: Match): Match {
@@ -35,6 +43,7 @@ function normalize(raw: unknown): AppData {
     players: Array.isArray(d.players) ? d.players : [],
     matches: Array.isArray(d.matches) ? d.matches.map(upgradeMatch).map((m) => (m.secret ? m : { ...m, secret: newSecret() })) : [],
     currentId: typeof d.currentId === "string" ? d.currentId : null,
+    tombstones: Array.isArray(d.tombstones) ? d.tombstones : [],
   }
 }
 

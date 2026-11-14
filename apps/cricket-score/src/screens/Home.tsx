@@ -1,3 +1,4 @@
+import type React from "react"
 import { ChevronRight, Eye, Plus, Radio, Trash2 } from "lucide-react"
 import { Button, ModeToggle } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
@@ -11,6 +12,7 @@ export function Home({
   onOpen,
   onDelete,
   onDemo,
+  account,
 }: {
   matches: Match[]
   currentId: string | null
@@ -18,6 +20,8 @@ export function Home({
   onOpen: (id: string) => void
   onDelete: (id: string) => void
   onDemo: () => void
+  /** Sign-in / sync button for the header. */
+  account?: React.ReactNode
 }) {
   const sorted = [...matches].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const live = sorted.find((m) => m.id === currentId && !computeMatch(m).result)
@@ -34,7 +38,10 @@ export function Home({
             <h1 className="text-2xl font-black tracking-tight">Cricket Score</h1>
           </div>
         </div>
-        <ModeToggle />
+        <div className="flex items-center gap-2">
+          {account}
+          <ModeToggle />
+        </div>
       </header>
 
       <button

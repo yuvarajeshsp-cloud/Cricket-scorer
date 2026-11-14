@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core"
+import { capacitorSupabaseStorage } from "@rajesh-hub/native"
 import { createHubClient } from "@rajesh-hub/supabase-kit"
 import { localTransport, type LiveTransport } from "./transport"
 import { supabaseTransport } from "./supabase"
@@ -8,8 +10,11 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 /** True when a Supabase project is set, so the score goes out over the internet. */
 export const isOnline = Boolean(url && key)
 
-// No logins in this app: nothing to keep in the session.
-const db = isOnline ? createHubClient(url!, key!, { passkeys: false }) : null
+// Viewers never sign in. Scorers can sign in by email to keep their matches online;
+// in the phone apps the session lives in native storage so it survives app restarts.
+export const db = isOnline
+  ? createHubClient(url!, key!, { passkeys: false, storage: Capacitor.isNativePlatform() ? capacitorSupabaseStorage : undefined })
+  : null
 
 export const live: LiveTransport = db ? supabaseTransport(db) : localTransport
 

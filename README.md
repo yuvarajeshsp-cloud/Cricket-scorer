@@ -20,4 +20,4 @@ npm run dev
 ## Deploying
 
 Every push to `main` builds the site and deploys it to the Cloudflare Pages project `cricket-score` (see `.github/workflows/deploy.yml`).
-The Android APK is not built in CI (it needs the private signing key); after a release build, copy `app-release.apk` to `apps/cricket-score/public/cricket-score.apk` and push.
+The Android APK is not built in CI (it needs the private signing key); after a release build, copy `app-release.apk` to `apps/cricket-score/releases/cricket-score.apk` and push (the workflow puts it on the site; it is kept out of `public/` so it never ends up inside the app).

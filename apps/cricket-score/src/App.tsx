@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { House, ListOrdered, Radio, Target, Users } from "lucide-react"
 import { toast } from "sonner"
 import { BottomNav, Toaster } from "@rajesh-hub/ui"
@@ -16,6 +16,9 @@ import { Scorecard } from "./screens/Scorecard"
 import { Share } from "./screens/Share"
 import { Overlay, Viewer } from "./screens/Viewer"
 import { PlayerProfile, Players } from "./screens/Players"
+import { AccountSheet } from "./components/AccountSheet"
+import { canSignIn, useSession } from "./account"
+import { stamp, useSync } from "./sync"
 
 type Tab = "home" | "score" | "card" | "players" | "share"
 
@@ -64,7 +67,11 @@ function applyPick(d: AppData, r: PickResult, team: string | null, ev: InningsEv
 }
 
 function ScorerApp() {
-  const { data, update } = useStore(store)
+  const { data, update: rawUpdate } = useStore(store)
+  // Every change the scorer makes is stamped (updatedAt / tombstones) so it can sync.
+  const update = useCallback((fn: (d: AppData) => AppData) => rawUpdate((prev) => stamp(prev, fn(prev))), [rawUpdate])
+  const session = useSession()
+  const sync = useSync(session?.user.id ?? null, data, rawUpdate)
   const [tab, setTab] = useState<Tab>("home")
   const [setupOpen, setSetupOpen] = useState(false)
   const [profileId, setProfileId] = useState<string | null>(null)
@@ -183,9 +190,14 @@ function ScorerApp() {
                 onNew={() => setSetupOpen(true)}
                 onOpen={openMatch}
                 onDelete={remove}
+                account={
+                  canSignIn ? (
+                    <AccountSheet session={session} status={sync.status} lastSynced={sync.lastSynced} error={sync.error} onSyncNow={sync.syncNow} />
+                  ) : null
+                }
                 onDemo={() => {
                   const demo = demoData()
-                  update((d) => ({ players: [...d.players, ...demo.players], matches: [...d.matches, ...demo.matches], currentId: demo.matches[1].id }))
+                  update((d) => ({ ...d, players: [...d.players, ...demo.players], matches: [...d.matches, ...demo.matches], currentId: demo.matches[1].id }))
                   setTab("score")
                 }}
               />

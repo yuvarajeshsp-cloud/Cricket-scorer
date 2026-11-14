@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "cap:sync": "npx cap sync"
+    "cap:sync": "npx cap sync",
+    "test": "esbuild src/engine/score.test.ts --bundle --platform=node --format=esm --outfile=dist-tests/score.test.mjs --log-level=warning && node --test dist-tests/score.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
@@ -15,6 +16,7 @@
     "@capacitor/core": "^8.5.1",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/ios": "^8.5.1",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.3",
     "@rajesh-hub/native": "*",
     "@rajesh-hub/offline-store": "*",

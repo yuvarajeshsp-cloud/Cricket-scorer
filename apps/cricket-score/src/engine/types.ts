@@ -9,6 +9,8 @@ export interface Player {
   createdAt: string
   /** One-tap placeholder ("Batter 3"): kept out of the Players list and never reused. */
   guest?: boolean
+  /** Last change, for syncing a signed-in scorer's phones (newest wins). */
+  updatedAt?: string
 }
 
 /** One thing that happened in an innings. The scorecard is always rebuilt from this list, so undo is just "drop the last event". */
@@ -55,6 +57,8 @@ export interface Match extends MatchSetup {
   /** Player id → name as it was in this match, so the scorecard never depends on the player list. */
   roster: Record<string, string>
   innings: Innings[]
-  /** Proves this phone is the scorer when publishing. Stays on the phone; never sent to viewers. */
+  /** Proves this phone is the scorer when publishing. Never sent to viewers (synced only to the scorer's own account). */
   secret?: string
+  /** Last change, for syncing a signed-in scorer's phones (newest wins). */
+  updatedAt?: string
 }
