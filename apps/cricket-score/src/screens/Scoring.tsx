@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowLeftRight, LogOut, MoreHorizontal, Radio, Trophy, Undo2, Zap } from "lucide-react"
+import { ArrowLeftRight, LogOut, MoreHorizontal, Radio, Trophy, Undo2, UserMinus, Zap } from "lucide-react"
 import { Badge, Button, cn } from "@rajesh-hub/ui"
 import type { DismissalKind, Extra, InningsEvent, Match, Player } from "../engine/types"
 import { DISMISSALS, oversText, plural, runRate, strikeRate, type MatchState, toScorecard } from "../engine/score"
@@ -197,14 +197,26 @@ export function Scoring(props: ScoringProps) {
           <PadButton variant="six" disabled={!canScore} onClick={() => ball({ type: "ball", runs: 6 })} sub="six">
             6
           </PadButton>
-          <PadButton variant="out" className="col-span-2" disabled={!canScore} onClick={() => setWicketOpen(true)} sub={cur.freeHit ? "free hit" : "wicket"}>
+          <PadButton variant="out" disabled={!canScore} onClick={() => setWicketOpen(true)} sub={cur.freeHit ? "free hit" : "wicket"}>
             OUT
           </PadButton>
-          {(["wd", "nb", "b", "lb"] as Extra[]).map((x) => (
-            <PadButton key={x} variant="extra" disabled={!canScore} onClick={() => setExtra(x)}>
-              {{ wd: "Wide", nb: "No ball", b: "Bye", lb: "Leg bye" }[x]}
-            </PadButton>
-          ))}
+          <PadButton variant="ghost" className="text-foreground" disabled={!canScore} onClick={() => setRetireOpen(true)}>
+            <UserMinus className="size-5" />
+            <span className="text-[10px] font-medium uppercase">Retire</span>
+          </PadButton>
+          {(["wd", "nb", "b", "lb"] as Extra[]).map((x) =>
+            x === "wd" ? (
+              // One tap = a plain wide (1 run). Hold it (or use More) when they also ran.
+              <PadButton key={x} variant="extra" disabled={!canScore} onClick={() => ball({ type: "ball", runs: 0, extra: "wd" })} onLongPress={() => setExtra("wd")}>
+                Wide
+                <span className="text-[9px] font-medium normal-case opacity-70">hold for runs</span>
+              </PadButton>
+            ) : (
+              <PadButton key={x} variant="extra" disabled={!canScore} onClick={() => setExtra(x)}>
+                {{ wd: "Wide", nb: "No ball", b: "Bye", lb: "Leg bye" }[x]}
+              </PadButton>
+            ),
+          )}
           <PadButton
             variant="ghost"
             className="col-span-2"
@@ -274,6 +286,16 @@ export function Scoring(props: ScoringProps) {
             }}
           >
             <LogOut /> Retire a batter
+          </Button>
+          <Button
+            variant="outline"
+            className="h-14 justify-start rounded-2xl text-base font-semibold"
+            onClick={() => {
+              setMoreOpen(false)
+              setExtra("wd")
+            }}
+          >
+            Wide + runs (they ran on a wide)
           </Button>
         </div>
       </Sheet>

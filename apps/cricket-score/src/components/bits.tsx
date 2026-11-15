@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useRef, type MouseEvent, type ReactNode } from "react"
 import { cn, Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@rajesh-hub/ui"
 import type { BallMark } from "../engine/score"
 
@@ -73,6 +73,7 @@ export function Sheet({
 export function PadButton({
   children,
   onClick,
+  onLongPress,
   variant = "plain",
   className,
   disabled,
@@ -80,16 +81,53 @@ export function PadButton({
 }: {
   children: ReactNode
   onClick: () => void
+  /** Press and hold (about half a second) does this instead of the tap action. */
+  onLongPress?: () => void
   variant?: "plain" | "four" | "six" | "out" | "extra" | "ghost"
   className?: string
   disabled?: boolean
   sub?: string
 }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const held = useRef(false)
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+  }
+  const hold = onLongPress
+    ? {
+        onPointerDown: () => {
+          held.current = false
+          cancel()
+          timer.current = setTimeout(() => {
+            held.current = true
+            try {
+              navigator.vibrate?.(25)
+            } catch {
+              /* no haptics */
+            }
+            onLongPress()
+          }, 500)
+        },
+        onPointerUp: cancel,
+        onPointerLeave: cancel,
+        onPointerCancel: cancel,
+        onContextMenu: (e: MouseEvent) => e.preventDefault(),
+      }
+    : {}
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={onClick}
+      {...hold}
+      onClick={() => {
+        // A long press already did its thing; don't also count a tap.
+        if (held.current) {
+          held.current = false
+          return
+        }
+        onClick()
+      }}
       className={cn(
         "flex h-16 flex-col items-center justify-center rounded-2xl text-2xl font-bold tabular-nums shadow-sm disabled:opacity-40",
         variant === "plain" && "bg-card text-card-foreground ring-1 ring-border",
