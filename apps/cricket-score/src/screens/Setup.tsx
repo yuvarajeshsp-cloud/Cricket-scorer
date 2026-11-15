@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowLeft, Coins, Minus, Plus, UserPlus, Users, X } from "lucide-react"
+import { ArrowLeft, Coins, Minus, Plus, UserPlus, Users } from "lucide-react"
 import { Button, Input } from "@rajesh-hub/ui"
 import type { MatchSetup, Player } from "../engine/types"
 import { Choice, SectionLabel, Sheet } from "../components/bits"
@@ -112,9 +112,27 @@ export function Setup({
       <section>
         <SectionLabel>Teams</SectionLabel>
         <div className="relative flex flex-col gap-2">
-          <Input className="h-14 rounded-2xl text-lg font-semibold" placeholder="Team A" value={teamA} onChange={(e) => setTeamA(e.target.value)} />
-          <span className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy px-2.5 py-1 text-[10px] font-bold text-white">VS</span>
-          <Input className="h-14 rounded-2xl text-lg font-semibold" placeholder="Team B" value={teamB} onChange={(e) => setTeamB(e.target.value)} />
+          {(["A", "B"] as const).map((k) => (
+            <div key={k} className="relative">
+              <Input
+                className="h-14 rounded-2xl pr-36 text-lg font-semibold"
+                placeholder={k === "A" ? "Team A" : "Team B"}
+                value={k === "A" ? teamA : teamB}
+                onChange={(e) => (k === "A" ? setTeamA : setTeamB)(e.target.value)}
+              />
+              {/* Squad for this team, right inside its name box. */}
+              <Button
+                size="sm"
+                variant={squads[k].length ? "default" : "secondary"}
+                className="absolute right-2 top-1/2 h-9 -translate-y-1/2 rounded-full"
+                aria-label={`${name(k)} players`}
+                onClick={() => setAdding(k)}
+              >
+                <UserPlus /> {squads[k].length ? plural(squads[k].length, "player") : "Add players"}
+              </Button>
+            </div>
+          ))}
+          <span className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy px-2.5 py-1 text-[10px] font-bold text-white">VS</span>
         </div>
       </section>
 
@@ -149,43 +167,11 @@ export function Setup({
         </div>
       </section>
 
-      <section>
-        <SectionLabel>Squads (optional)</SectionLabel>
-        <p className="-mt-1 mb-3 text-sm text-muted-foreground">Pick from saved players for one-tap scoring. You can still bring in anyone during the match.</p>
-        <div className="flex flex-col gap-3">
-          {(["A", "B"] as const).map((k) => (
-            <div key={k} className="rounded-2xl bg-card p-4 ring-1 ring-border">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">
-                  {name(k)} <span className="text-sm font-normal text-muted-foreground">· {squads[k].length}</span>
-                </span>
-                <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setAdding(k)}>
-                  <UserPlus /> Add players
-                </Button>
-              </div>
-              {squads[k].length ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {squads[k].map((p) => (
-                    <span key={p.id} className="flex items-center gap-1 rounded-full bg-secondary py-1 pl-3 pr-1 text-sm font-medium">
-                      {p.name}
-                      {inBoth(p.id) ? <span className="rounded-full bg-teal px-1.5 text-[10px] font-bold text-white">BOTH</span> : null}
-                      <button type="button" aria-label={`Remove ${p.name}`} className="rounded-full p-1 text-muted-foreground" onClick={() => toggle(k, p, false)}>
-                        <X className="size-3.5" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </section>
-
       <Sheet
         open={adding !== null}
         onOpenChange={(o) => !o && setAdding(null)}
         title={adding ? `${name(adding)} squad` : ""}
-        description="Tap to add or remove. Tap Done when finished."
+        description="Tap to add or remove. You can still bring in anyone during the match."
       >
         {adding ? (
           <div className="flex flex-col gap-4">
