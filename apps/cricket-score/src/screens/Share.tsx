@@ -1,21 +1,15 @@
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
-import { Check, Copy, Eye, Globe, MonitorPlay, Smartphone, Wifi, X } from "lucide-react"
-import { Badge, Button, cn } from "@rajesh-hub/ui"
+import { Check, Copy, Eye, MonitorPlay, X } from "lucide-react"
+import { Button, cn } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
 import type { MatchState } from "../engine/score"
 import { liveScoreText } from "../engine/share-text"
 import { WhatsAppButton } from "../components/WhatsAppButton"
-import { SectionLabel } from "../components/bits"
 import { Viewer } from "./Viewer"
-import { isOnline, liveUrl, STATUS_TEXT } from "../live"
+import { liveUrl, STATUS_TEXT } from "../live"
 import { useLiveStatus } from "../live/useLiveStatus"
 
-const MODES = [
-  { key: "device", icon: Smartphone, title: "This device", text: "Viewer in another tab on this phone. Used when no Supabase project is set.", ready: !isOnline },
-  { key: "online", icon: Globe, title: "Online", text: "Anyone, anywhere, through Supabase. No login.", ready: isOnline },
-  { key: "ground", icon: Wifi, title: "Ground (hotspot)", text: "Phones at the ground join your hotspot. No internet needed.", ready: false },
-] as const
 
 export function Share({ match, state }: { match: Match; state: MatchState }) {
   const url = liveUrl(match.id)
@@ -78,23 +72,6 @@ export function Share({ match, state }: { match: Match; state: MatchState }) {
 
       <p className="break-all rounded-2xl bg-muted px-4 py-3 font-mono text-xs text-muted-foreground select-all">{url}</p>
 
-      <section>
-        <SectionLabel>Broadcast through</SectionLabel>
-        <div className="flex flex-col gap-2">
-          {MODES.map((m) => (
-            <div key={m.key} className={cn("flex items-center gap-3 rounded-2xl bg-card p-4 ring-1", m.ready ? "ring-primary" : "ring-border opacity-70")}>
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", m.ready ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                <m.icon className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{m.title}</span>
-                <span className="block text-xs text-muted-foreground">{m.text}</span>
-              </span>
-              {m.ready ? <Badge>On</Badge> : <Badge variant="outline">{m.key === "ground" ? "Later" : "Off"}</Badge>}
-            </div>
-          ))}
-        </div>
-      </section>
 
       {preview ? (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-background">

@@ -10,6 +10,7 @@ import { econText, inSeason, leaderboards, playerOfMatch, seasonsOf, type Leader
 import { whatsappUrl } from "../engine/share-text"
 import { SectionLabel, Sheet } from "../components/bits"
 import { SignIn } from "../components/AccountSheet"
+import { PdfShareButton } from "../components/PdfShareButton"
 import { useNotifyPermission } from "../alerts"
 import { Scorecard } from "./Scorecard"
 import { Avatar, PlayerProfile } from "./Players"
@@ -295,7 +296,8 @@ function GroupMatches({ matches, onOpen }: { matches: GroupMatch[] | null; onOpe
 function MatchCard({ m, st, live, onClick }: { m: Match; st: ReturnType<typeof computeMatch>; live?: boolean; onClick: () => void }) {
   const date = new Date(m.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })
   return (
-    <button type="button" onClick={onClick} className="flex flex-col gap-1.5 rounded-3xl bg-card p-4 text-left ring-1 ring-border">
+    <div className="flex items-start gap-1 rounded-3xl bg-card p-4 ring-1 ring-border">
+    <button type="button" onClick={onClick} className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
       <span className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {date} · {plural(m.overs, "over")}
@@ -318,6 +320,8 @@ function MatchCard({ m, st, live, onClick }: { m: Match; st: ReturnType<typeof c
       <span className="text-sm text-teal">{st.result ?? (live ? "Tap to watch live" : "Not started yet")}</span>
       {st.result ? <AwardLine m={m} /> : null}
     </button>
+    {st.innings.length ? <PdfShareButton match={m} variant="icon" className="-mr-2 -mt-1" /> : null}
+    </div>
   )
 }
 

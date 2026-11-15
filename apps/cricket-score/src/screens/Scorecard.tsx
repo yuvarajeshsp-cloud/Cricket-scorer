@@ -1,12 +1,8 @@
 import { useState } from "react"
-import { FileDown } from "lucide-react"
-import { toast } from "sonner"
-import { Button, cn, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
-import { shareFile } from "@rajesh-hub/native"
+import { cn, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
+import { PdfShareButton } from "../components/PdfShareButton"
 import { oversText, plural, runRate, strikeRate, type ScorecardData } from "../engine/score"
 import { BallChip } from "../components/bits"
-import { WhatsAppButton } from "../components/WhatsAppButton"
-import { scorecardText } from "../engine/share-text"
 
 /** The full scorecard. Read-only when there is no onOpenPlayer (viewers). */
 export function Scorecard({ card, onOpenPlayer }: { card: ScorecardData; onOpenPlayer?: (id: string) => void }) {
@@ -30,8 +26,7 @@ export function Scorecard({ card, onOpenPlayer }: { card: ScorecardData; onOpenP
             <span className="text-muted-foreground">{card.award.line}</span>
           </p>
         ) : null}
-        <WhatsAppButton text={scorecardText(card)} className="mt-3 h-11 w-full rounded-2xl" label="Share scorecard on WhatsApp" />
-        <PdfButton card={card} />
+        <PdfShareButton card={card} className="mt-3" />
       </header>
 
       {card.innings.length > 1 ? (
@@ -164,29 +159,5 @@ export function Scorecard({ card, onOpenPlayer }: { card: ScorecardData; onOpenP
         </section>
       ) : null}
     </div>
-  )
-}
-
-/** Full scorecard as a PDF: the share sheet on phones (WhatsApp, Drive, print), a download on computers. */
-function PdfButton({ card }: { card: ScorecardData }) {
-  const { match } = card
-  const [busy, setBusy] = useState(false)
-  const share = async () => {
-    setBusy(true)
-    try {
-      // Loaded on tap so the PDF library doesn't slow down opening the app.
-      const { scorecardPdf, scorecardFileName } = await import("../engine/scorecard-pdf")
-      const title = `${match.teamA} vs ${match.teamB} scorecard`
-      await shareFile(scorecardPdf(card), scorecardFileName(match), title, card.result ?? title)
-    } catch (e) {
-      toast.error(`Couldn't make the PDF: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <Button variant="outline" className="mt-2 h-11 w-full rounded-2xl font-semibold" disabled={busy} onClick={() => void share()}>
-      <FileDown /> {busy ? "Making PDF…" : "Share scorecard as PDF"}
-    </Button>
   )
 }

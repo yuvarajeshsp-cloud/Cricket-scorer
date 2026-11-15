@@ -4,6 +4,7 @@ import { Button, ModeToggle } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
 import { computeMatch, oversText } from "../engine/score"
 import { forgetWatched, useWatched } from "../watching"
+import { PdfShareButton } from "../components/PdfShareButton"
 import { plural } from "../engine/score"
 
 export function Home({
@@ -130,13 +131,16 @@ function MatchRow({ match, live, onOpen, onDelete }: { match: Match; live?: bool
         {!st.innings.length ? <span className="font-semibold">{match.teamA} vs {match.teamB}</span> : null}
         {st.result ? <span className="text-sm font-medium text-teal">{st.result}</span> : null}
       </button>
-      {onDelete && !live ? (
-        <Button size="icon" variant="ghost" className="text-muted-foreground" aria-label="Delete match" onClick={() => onDelete(match.id)}>
-          <Trash2 />
-        </Button>
-      ) : (
-        <ChevronRight className="text-muted-foreground" />
-      )}
+      <div className="flex shrink-0 flex-col items-center">
+        {st.innings.length ? <PdfShareButton match={match} variant="icon" /> : null}
+        {onDelete && !live ? (
+          <Button size="icon" variant="ghost" className="text-muted-foreground" aria-label="Delete match" onClick={() => onDelete(match.id)}>
+            <Trash2 />
+          </Button>
+        ) : (
+          <ChevronRight className="text-muted-foreground" />
+        )}
+      </div>
     </div>
   )
 }
