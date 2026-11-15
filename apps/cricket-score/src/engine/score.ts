@@ -13,6 +13,8 @@ export interface BatterLine {
   dismissal?: { kind: DismissalKind; bowler: string; fielder?: string }
   /** Retired not out: off the field but can come back in this innings. */
   retired?: boolean
+  /** Every ball this batter faced, as scorecard labels ("1", "4", "•", "1Nb", "2Lb", "W"). Wides aren't faced. */
+  faced: string[]
 }
 
 export interface BowlerLine {
@@ -33,6 +35,8 @@ export interface BallMark {
 export interface OverLine {
   /** Bowler's name. */
   bowler: string
+  /** Bowler's player id. */
+  bowlerId: string
   balls: BallMark[]
   runs: number
 }
@@ -141,7 +145,7 @@ export function computeInnings(inn: Innings, match: Pick<Match, "overs" | "playe
   const batter = (id: string) => {
     let b = s.batters.find((x) => x.id === id)
     if (!b) {
-      b = { id, name: nameOf(id), runs: 0, balls: 0, fours: 0, sixes: 0 }
+      b = { id, name: nameOf(id), runs: 0, balls: 0, fours: 0, sixes: 0, faced: [] }
       s.batters.push(b)
     }
     return b
@@ -187,7 +191,7 @@ export function computeInnings(inn: Innings, match: Pick<Match, "overs" | "playe
     if (ev.type === "bowler") {
       s.bowler = ev.id
       const bl = bowlerLine(ev.id)
-      current = { bowler: bl.name, balls: [], runs: 0 }
+      current = { bowler: bl.name, bowlerId: ev.id, balls: [], runs: 0 }
       s.overs.push(current)
       overConceded = 0
       continue
@@ -241,6 +245,11 @@ export function computeInnings(inn: Innings, match: Pick<Match, "overs" | "playe
     }
     current?.balls.push(ballMark(ev))
     if (current) current.runs += total
+    if (ev.extra !== "wd") {
+      // A run out at the other end isn't the striker's wicket: show just the runs on their ball.
+      const forBatter = ev.wicket && ev.wicket.out === "non-striker" ? { ...ev, wicket: undefined } : ev
+      bat.faced.push(ballMark(forBatter).label)
+    }
 
     if (ev.runs % 2 === 1) swap()
 
@@ -325,7 +334,7 @@ export interface InningsCard {
   wickets: number
   legalBalls: number
   extras: InningsState["extras"]
-  batters: (Pick<BatterLine, "id" | "name" | "runs" | "balls" | "fours" | "sixes" | "out" | "retired"> & { notOut?: boolean })[]
+  batters: (Pick<BatterLine, "id" | "name" | "runs" | "balls" | "fours" | "sixes" | "out" | "retired"> & { notOut?: boolean; faced?: string[] })[]
   bowlers: Pick<BowlerLine, "id" | "name" | "balls" | "maidens" | "runs" | "wickets">[]
   fallOfWickets: InningsState["fallOfWickets"]
   overs: OverLine[]
@@ -353,13 +362,14 @@ export function toScorecard(match: Match, st: MatchState): ScorecardData {
         wickets: inn.wickets,
         legalBalls: inn.legalBalls,
         extras: inn.extras,
-        batters: inn.batters.map(({ id, name, runs, balls, fours, sixes, out, retired }) => ({
+        batters: inn.batters.map(({ id, name, runs, balls, fours, sixes, out, retired, faced }) => ({
           id,
           name,
           runs,
           balls,
           fours,
           sixes,
+          faced,
           ...(out ? { out } : {}),
           ...(retired ? { retired } : {}),
           ...(atCrease.has(id) ? { notOut: true } : {}),

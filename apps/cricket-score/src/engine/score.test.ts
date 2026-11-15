@@ -170,3 +170,16 @@ test("live snapshot carries the full scorecard and stays small", () => {
   assert.ok(JSON.stringify(snap).length < 64 * 1024)
   assert.deepEqual(toScorecard(m, st).innings[0].batters.filter((b) => b.notOut).map((b) => b.id).sort(), ["a", "b"])
 })
+
+test("balls faced per batter (for the PDF): wides left out, no-balls and byes in, run out at the other end isn't the striker's W", () => {
+  const s = inn([
+    ball(1),
+    ball(0, { extra: "wd" }),
+    ball(4, { extra: "nb" }),
+    ball(2, { extra: "lb" }),
+    ball(1, { wicket: { kind: "run-out", out: "non-striker", fielder: "z" } }),
+  ])
+  assert.deepEqual(s.batters.find((b) => b.id === "a")!.faced, ["1"])
+  assert.deepEqual(s.batters.find((b) => b.id === "b")!.faced, ["4Nb", "2Lb", "1"])
+  assert.equal(s.overs[0].bowlerId, "x")
+})

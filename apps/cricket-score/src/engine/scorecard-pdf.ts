@@ -36,6 +36,16 @@ interface Col {
   align?: "left" | "right"
 }
 
+/** "Ov 1:  1 4 • Wd 6 W     Ov 3:  …" — every ball a bowler bowled, over by over. */
+function bowlerOvers(inn: InningsCard, id: string, name: string): string | undefined {
+  const parts = inn.overs
+    .map((o, i) => ({ o, n: i + 1 }))
+    .filter(({ o }) => (o.bowlerId ? o.bowlerId === id : o.bowler === name))
+    .filter(({ o }) => o.balls.length)
+    .map(({ o, n }) => `Ov ${n}:  ${o.balls.map((b) => b.label).join("  ")}`)
+  return parts.length ? parts.join("      ") : undefined
+}
+
 export function scorecardFileName(match: ScorecardData["match"]): string {
   const slug = `${match.teamA}-vs-${match.teamB}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   return `scorecard-${slug || "match"}-${match.createdAt.slice(0, 10)}.pdf`
@@ -82,14 +92,31 @@ export function scorecardPdf(card: ScorecardData): Blob {
     y += 8
   }
   if (card.award) {
-    text(`Player of the match: ${card.award.name}  ${card.award.line}`, M, y, { size: 10, bold: true, color: token("gold") })
-    y += 7
+    // A gold-edged box so player of the match stands out.
+    const gold = token("gold")
+    doc.setFillColor(253, 246, 232)
+    doc.setDrawColor(...gold)
+    doc.setLineWidth(0.6)
+    doc.roundedRect(M, y - 4.5, W, 11, 2, 2, "FD")
+    doc.setLineWidth(0.2)
+    text("PLAYER OF THE MATCH", M + 4, y + 2.4, { size: 8, bold: true, color: gold })
+    text(card.award.name, M + 42, y + 2.6, { size: 12, bold: true })
+    text(card.award.line, M + W - 4, y + 2.6, { size: 10, color: GREY_TEXT, align: "right" })
+    y += 12
   }
   const toss = `${match.tossWinner} won the toss and chose to ${match.tossChoice}`
   text(toss, M, y, { size: 9, color: GREY_TEXT })
   y += 8
 
-  const table = (cols: Col[], rows: { cells: string[]; sub?: string; bold?: number[] }[]) => {
+  /** Ball-by-ball line under a player, wrapped across the full width. */
+  const ballLines = (s: string | undefined): string[] => {
+    if (!s) return []
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7.5)
+    return doc.splitTextToSize(s, W - 4) as string[]
+  }
+
+  const table = (cols: Col[], rows: { cells: string[]; sub?: string; balls?: string; bold?: number[] }[]) => {
     const head = 6.5
     ensure(head + 8)
     doc.setFillColor(...GREY_BAND)
@@ -102,7 +129,8 @@ export function scorecardPdf(card: ScorecardData): Blob {
     }
     y += head
     for (const r of rows) {
-      const h = r.sub ? 8.6 : 6.6
+      const extra = ballLines(r.balls)
+      const h = (r.sub ? 8.6 : 6.6) + extra.length * 3.4 + (extra.length ? 0.8 : 0)
       ensure(h)
       x = M
       r.cells.forEach((cell, i) => {
@@ -115,6 +143,7 @@ export function scorecardPdf(card: ScorecardData): Blob {
         x += c.width
       })
       if (r.sub) text(fit(r.sub, cols[0].width - 4), M + 2, y + 7.6, { size: 7.5, color: GREY_TEXT })
+      extra.forEach((line, k) => text(line, M + 2, y + (r.sub ? 8.6 : 6.6) + 2.6 + k * 3.4, { size: 7.5, color: [60, 60, 60] }))
       y += h
       doc.setDrawColor(...GREY_LINE)
       doc.line(M, y, M + W, y)
@@ -148,6 +177,7 @@ export function scorecardPdf(card: ScorecardData): Blob {
       inn.batters.map((b) => ({
         cells: [`${b.name}${b.notOut ? "*" : ""}`, String(b.runs), String(b.balls), String(b.fours), String(b.sixes), strikeRate(b.runs, b.balls)],
         sub: b.out ?? (b.retired ? "retired not out" : b.notOut ? "not out" : undefined),
+        balls: b.faced?.length ? `Balls:  ${b.faced.join("   ")}` : undefined,
         bold: [0, 1],
       })),
     )
@@ -172,6 +202,7 @@ export function scorecardPdf(card: ScorecardData): Blob {
         ],
         inn.bowlers.map((b) => ({
           cells: [b.name, oversText(b.balls), String(b.maidens), String(b.runs), String(b.wickets), runRate(b.runs, b.balls)],
+          balls: bowlerOvers(inn, b.id, b.name),
           bold: [0, 4],
         })),
       )
