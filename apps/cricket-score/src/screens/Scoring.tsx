@@ -51,9 +51,16 @@ export function Scoring(props: ScoringProps) {
   const hasHistory = match.innings.some((inn) => inn.events.length > 0) || match.innings.length > 1
 
   return (
-    <div className="flex flex-col gap-3 pb-24">
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        // While scoring, fit exactly between the top of the page and the bottom menu (4rem + safe area)
+        // so Wide / No ball / Undo are never below the fold. Short phones get a more compact layout.
+        cur.complete ? "pb-24" : "h-[calc(100dvh-6rem-env(safe-area-inset-bottom))] min-h-[540px] gap-2 [@media(min-height:780px)]:gap-3",
+      )}
+    >
       {/* Score hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy to-brand-blue p-5 text-white shadow-lg">
+      <section className="relative shrink-0 overflow-hidden rounded-3xl bg-gradient-to-br from-navy to-brand-blue p-4 text-white shadow-lg [@media(min-height:780px)]:p-5">
         <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/5" />
         <div className="flex items-center justify-between gap-2 text-xs font-medium text-white/75">
           <span className="truncate">
@@ -69,7 +76,7 @@ export function Scoring(props: ScoringProps) {
         <div className="mt-2 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white/85">{cur.batting}</p>
-            <p className="text-5xl font-black tabular-nums leading-none tracking-tight">
+            <p className="text-4xl font-black tabular-nums leading-none tracking-tight [@media(min-height:780px)]:text-5xl">
               {cur.runs}
               <span className="text-white/60">/{cur.wickets}</span>
             </p>
@@ -79,26 +86,32 @@ export function Scoring(props: ScoringProps) {
             <p className="text-xs text-white/70">overs</p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/80">
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/80 [@media(min-height:780px)]:mt-3">
           <span>CRR {runRate(cur.runs, cur.legalBalls)}</span>
           {state.target !== undefined && inningsNo === 2 ? (
             <>
               <span>Target {state.target}</span>
               <span>RRR {runRate(Math.max(0, state.target - cur.runs), ballsLeft)}</span>
+              {/* Short phones: "Need …" joins this row instead of taking its own line. */}
+              {!cur.complete ? (
+                <span className="font-semibold text-white [@media(min-height:780px)]:hidden">
+                  Need {Math.max(0, state.target - cur.runs)} off {ballsLeft}
+                </span>
+              ) : null}
             </>
           ) : null}
         </div>
         {state.target !== undefined && inningsNo === 2 && !cur.complete ? (
-          <p className="mt-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold">
+          <p className="mt-2 hidden rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold [@media(min-height:780px)]:block">
             Need {Math.max(0, state.target - cur.runs)} off {ballsLeft} ball{ballsLeft === 1 ? "" : "s"}
           </p>
         ) : null}
       </section>
 
       {/* Batters + bowler */}
-      <section className="rounded-3xl bg-card p-2 ring-1 ring-border">
+      <section className="shrink-0 rounded-3xl bg-card p-1.5 ring-1 ring-border [@media(min-height:780px)]:p-2">
         {[striker, nonStriker].map((b, i) => (
-          <div key={i} className={cn("flex items-center justify-between rounded-2xl px-3 py-2.5", i === 0 && b && "bg-secondary")}>
+          <div key={i} className={cn("flex items-center justify-between rounded-2xl px-3 py-1.5 [@media(min-height:780px)]:py-2.5", i === 0 && b && "bg-secondary")}>
             <span className="flex min-w-0 items-center gap-2 font-semibold">
               <span className={cn("size-2 shrink-0 rounded-full", i === 0 && b ? "bg-teal" : "bg-transparent")} />
               <span className="truncate">{b ? b.name : <span className="text-muted-foreground">Waiting for batter…</span>}</span>
@@ -112,7 +125,7 @@ export function Scoring(props: ScoringProps) {
             ) : null}
           </div>
         ))}
-        <div className="mt-1 flex items-center justify-between border-t px-3 pt-2.5 pb-1.5 text-sm">
+        <div className="mt-1 flex items-center justify-between border-t px-3 pt-1.5 pb-1 text-sm [@media(min-height:780px)]:pt-2.5 [@media(min-height:780px)]:pb-1.5">
           <span className="truncate text-muted-foreground">
             Bowling: <span className="font-semibold text-foreground">{bowler?.name ?? "—"}</span>
           </span>
@@ -125,7 +138,7 @@ export function Scoring(props: ScoringProps) {
       </section>
 
       {/* This over */}
-      <section className="flex items-center gap-3 rounded-3xl bg-card px-4 py-3 ring-1 ring-border">
+      <section className="flex shrink-0 items-center gap-3 rounded-3xl bg-card px-4 py-2 ring-1 ring-border [@media(min-height:780px)]:py-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">This over</span>
         <div className="no-scrollbar flex flex-1 items-center gap-1.5 overflow-x-auto">
           {thisOver.map((m, i) => (
@@ -172,7 +185,7 @@ export function Scoring(props: ScoringProps) {
         </section>
       ) : (
         /* Scoring pad */
-        <section className="grid grid-cols-4 gap-2">
+        <section className="grid min-h-0 flex-1 auto-rows-fr grid-cols-4 grid-rows-4 gap-2 [&>button]:h-auto [&>button]:min-h-11">
           {[0, 1, 2, 3].map((r) => (
             <PadButton key={r} disabled={!canScore} onClick={() => ball({ type: "ball", runs: r })} sub={r === 0 ? "dot" : undefined}>
               {r}
