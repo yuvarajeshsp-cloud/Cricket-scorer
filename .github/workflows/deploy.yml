@@ -32,7 +32,15 @@ jobs:
           VITE_PUBLIC_URL: https://cricket-score-6k3.pages.dev
       - name: Add the Android APK download to the site
         # Kept out of public/ so it is never packed inside the app itself.
-        run: cp apps/cricket-score/releases/cricket-score.apk apps/cricket-score/dist/cricket-score.apk
+        # The file carries its version (cricket-score-v2.0.apk); /cricket-score.apk
+        # always redirects to the newest one, so old links keep working.
+        run: |
+          cd apps/cricket-score
+          latest=$(ls releases/cricket-score-v*.apk | sort -V | tail -1)
+          name=$(basename "$latest")
+          cp "$latest" "dist/$name"
+          printf '/cricket-score.apk /%s 302\n' "$name" > dist/_redirects
+          echo "Publishing $name"
       - name: Deploy to Cloudflare Pages (project cricket-score)
         uses: cloudflare/wrangler-action@v3
         with:
