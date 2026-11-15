@@ -383,44 +383,49 @@ function GroupPlayers({
       </div>
       {!players.length ? <p className="rounded-3xl border-2 border-dashed p-6 text-center text-sm text-muted-foreground">No players yet. Add the people who play in this group.</p> : null}
       {sorted.map(({ p, c }) => (
-        <div key={p.id} className="flex items-center gap-3 rounded-3xl bg-card p-3 ring-1 ring-border">
-          <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => onOpen(p)}>
-            <Avatar name={p.name} />
-            <span className="min-w-0">
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span className="truncate">{p.name}</span>
-                {p.userId === userId ? <span className="rounded-full bg-teal px-1.5 py-0.5 text-[10px] font-bold text-white">YOU</span> : null}
+        <div key={p.id} className="flex flex-col gap-2 rounded-3xl bg-card p-3 ring-1 ring-border">
+          <div className="flex items-center gap-3">
+            <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => onOpen(p)}>
+              <Avatar name={p.name} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <span className="truncate">{p.name}</span>
+                  {p.userId === userId ? <span className="shrink-0 rounded-full bg-teal px-1.5 py-0.5 text-[10px] font-bold text-white">YOU</span> : null}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {plural(c.matches, "match", "matches")} · {plural(c.batting.runs, "run")} · {plural(c.bowling.wickets, "wkt")}
+                </span>
+                {p.phone ? <span className="block text-xs text-muted-foreground tabular-nums">{p.phone}</span> : null}
               </span>
-              <span className="block text-xs text-muted-foreground">
-                {c.matches} match{c.matches === 1 ? "" : "es"} · {c.batting.runs} runs · {c.bowling.wickets} wkts
-              </span>
-              {p.phone ? <span className="block text-xs text-muted-foreground tabular-nums">{p.phone}</span> : null}
-            </span>
-          </button>
-          <div className="flex shrink-0 items-center">
-            {p.phone ? (
-              <>
-                <Button size="icon" variant="ghost" aria-label={`Call ${p.name}`} asChild>
-                  <a href={`tel:${p.phone}`}>
-                    <Phone />
-                  </a>
-                </Button>
-                <Button size="icon" variant="ghost" aria-label={`WhatsApp ${p.name}`} asChild>
-                  <a href={`https://wa.me/${p.phone.replace(/[^\d]/g, "").replace(/^(?=\d{10}$)/, "91")}`} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle />
-                  </a>
-                </Button>
-              </>
-            ) : null}
-            {!mine && !p.userId ? (
-              <Button size="sm" variant="outline" className="rounded-full" onClick={() => void claim(p)}>
-                <UserCheck /> This is me
-              </Button>
-            ) : null}
-            <Button size="icon" variant="ghost" aria-label={`Edit ${p.name}`} onClick={() => setEditing(p)}>
+            </button>
+            <Button size="icon" variant="ghost" className="shrink-0" aria-label={`Edit ${p.name}`} onClick={() => setEditing(p)}>
               <Pencil />
             </Button>
           </div>
+          {p.phone || (!mine && !p.userId) ? (
+            // Actions on their own line, so the name and stats keep the full width on a phone.
+            <div className="flex flex-wrap gap-2 pl-14">
+              {p.phone ? (
+                <>
+                  <Button size="sm" variant="outline" className="rounded-full" asChild>
+                    <a href={`tel:${p.phone}`} aria-label={`Call ${p.name}`}>
+                      <Phone /> Call
+                    </a>
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-full" asChild>
+                    <a href={`https://wa.me/${p.phone.replace(/[^\d]/g, "").replace(/^(?=\d{10}$)/, "91")}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${p.name}`}>
+                      <MessageCircle /> WhatsApp
+                    </a>
+                  </Button>
+                </>
+              ) : null}
+              {!mine && !p.userId ? (
+                <Button size="sm" variant="secondary" className="rounded-full" onClick={() => void claim(p)}>
+                  <UserCheck /> This is me
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ))}
 

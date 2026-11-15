@@ -3,6 +3,7 @@ import { ArrowLeft, Check, Pencil, Search, UserPlus } from "lucide-react"
 import { Button, cn, Input } from "@rajesh-hub/ui"
 import type { Match, Player } from "../engine/types"
 import { avg, bestBat, bestBowl, careerStats, econ, oversText, sr, type CareerStats } from "../engine/stats"
+import { plural } from "../engine/score"
 import { playerText } from "../engine/share-text"
 import { initials } from "../components/PlayerPicker"
 import { SectionLabel } from "../components/bits"
@@ -174,7 +175,7 @@ export function PlayerProfile({
           </button>
         )}
         <p className="text-sm text-muted-foreground">
-          {c.matches} match{c.matches === 1 ? "" : "es"} · {B.runs} runs · {W.wickets} wickets
+          {plural(c.matches, "match", "matches")} · {plural(B.runs, "run")} · {plural(W.wickets, "wicket")}
         </p>
         <WhatsAppButton text={playerText(player, c)} className="h-11 w-full rounded-2xl" label="Share stats on WhatsApp" />
       </section>
