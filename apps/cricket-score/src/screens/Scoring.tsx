@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowLeftRight, LogOut, MoreHorizontal, Radio, Trophy, Undo2, UserMinus, Zap } from "lucide-react"
+import { ArrowLeftRight, MoreHorizontal, Radio, Trophy, Undo2, UserMinus, Zap } from "lucide-react"
 import { Badge, Button, cn } from "@rajesh-hub/ui"
 import type { DismissalKind, Extra, InningsEvent, Match, Player } from "../engine/types"
 import { DISMISSALS, oversText, plural, runRate, strikeRate, type MatchState, toScorecard } from "../engine/score"
@@ -206,7 +206,7 @@ export function Scoring(props: ScoringProps) {
           </PadButton>
           {(["wd", "nb", "b", "lb"] as Extra[]).map((x) =>
             x === "wd" ? (
-              // One tap = a plain wide (1 run). Hold it (or use More) when they also ran.
+              // One tap = a plain wide (1 run). Hold it when they also ran.
               <PadButton key={x} variant="extra" disabled={!canScore} onClick={() => ball({ type: "ball", runs: 0, extra: "wd" })} onLongPress={() => setExtra("wd")}>
                 Wide
                 <span className="text-[9px] font-medium normal-case opacity-70">hold for runs</span>
@@ -277,26 +277,6 @@ export function Scoring(props: ScoringProps) {
               ))}
             </div>
           </div>
-          <Button
-            variant="outline"
-            className="h-14 justify-start rounded-2xl text-base font-semibold"
-            onClick={() => {
-              setMoreOpen(false)
-              setRetireOpen(true)
-            }}
-          >
-            <LogOut /> Retire a batter
-          </Button>
-          <Button
-            variant="outline"
-            className="h-14 justify-start rounded-2xl text-base font-semibold"
-            onClick={() => {
-              setMoreOpen(false)
-              setExtra("wd")
-            }}
-          >
-            Wide + runs (they ran on a wide)
-          </Button>
         </div>
       </Sheet>
       <RetireSheet
