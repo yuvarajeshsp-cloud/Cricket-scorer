@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import QRCode from "qrcode"
-import { ArrowLeft, Bell, Check, ChevronRight, Copy, LogOut, MessageCircle, Pencil, Phone, Plus, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
+import { ArrowLeft, Bell, Check, ChevronRight, Copy, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Button, Input, Label, Spinner, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
@@ -402,28 +402,11 @@ function GroupPlayers({
               <Pencil />
             </Button>
           </div>
-          {p.phone || (!mine && !p.userId) ? (
-            // Actions on their own line, so the name and stats keep the full width on a phone.
+          {!mine && !p.userId ? (
             <div className="flex flex-wrap gap-2 pl-14">
-              {p.phone ? (
-                <>
-                  <Button size="sm" variant="outline" className="rounded-full" asChild>
-                    <a href={`tel:${p.phone}`} aria-label={`Call ${p.name}`}>
-                      <Phone /> Call
-                    </a>
-                  </Button>
-                  <Button size="sm" variant="outline" className="rounded-full" asChild>
-                    <a href={`https://wa.me/${p.phone.replace(/[^\d]/g, "").replace(/^(?=\d{10}$)/, "91")}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${p.name}`}>
-                      <MessageCircle /> WhatsApp
-                    </a>
-                  </Button>
-                </>
-              ) : null}
-              {!mine && !p.userId ? (
-                <Button size="sm" variant="secondary" className="rounded-full" onClick={() => void claim(p)}>
-                  <UserCheck /> This is me
-                </Button>
-              ) : null}
+              <Button size="sm" variant="secondary" className="rounded-full" onClick={() => void claim(p)}>
+                <UserCheck /> This is me
+              </Button>
             </div>
           ) : null}
         </div>
