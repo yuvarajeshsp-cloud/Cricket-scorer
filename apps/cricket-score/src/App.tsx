@@ -17,6 +17,8 @@ import { Overlay, Viewer } from "./screens/Viewer"
 import { PlayerProfile, Players } from "./screens/Players"
 import { AccountSheet } from "./components/AccountSheet"
 import { canSignIn, useSession } from "./account"
+import { providerName, useProfile } from "./profile"
+import { CompleteProfile } from "./components/ProfileForm"
 import { stamp, useSync } from "./sync"
 import { addMissingGroupPlayers, asPlayer, groupPlayers, useMyGroups } from "./groups"
 import { GroupPage, GroupsSection, JoinGroup } from "./screens/Groups"
@@ -49,10 +51,12 @@ export default function App() {
 
 function JoinRoute({ code }: { code: string }) {
   const session = useSession()
+  const prof = useProfile(session)
   if (session === undefined) return null
   return (
     <>
-      <JoinGroup code={code} userId={session?.user.id ?? null} onJoined={(id) => (location.hash = `#/group/${id}`)} />
+      <JoinGroup code={code} userId={session?.user.id ?? null} profile={prof.profile ?? null} onJoined={(id) => (location.hash = `#/group/${id}`)} />
+      <CompleteProfile open={Boolean(session) && prof.profile === null} suggestedName={providerName(session)} email={session?.user.email} onSave={prof.save} />
       <Toaster position="top-center" />
     </>
   )
@@ -100,6 +104,7 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
   const [setupGroup, setSetupGroup] = useState<string | null>(null)
   const userId = session?.user.id ?? null
   const myGroups = useMyGroups(userId)
+  const prof = useProfile(session)
 
   const match = data?.matches.find((m) => m.id === data.currentId) ?? null
   // In a group match, the group's players are offered too (not just players saved on this phone).
@@ -321,7 +326,15 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
                 }
                 account={
                   canSignIn ? (
-                    <AccountSheet session={session} status={sync.status} lastSynced={sync.lastSynced} error={sync.error} onSyncNow={sync.syncNow} />
+                    <AccountSheet
+                      session={session}
+                      status={sync.status}
+                      lastSynced={sync.lastSynced}
+                      error={sync.error}
+                      onSyncNow={sync.syncNow}
+                      profile={prof.profile}
+                      onSaveProfile={prof.save}
+                    />
                   ) : null
                 }
               />
@@ -379,6 +392,7 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
           setTab(k as Tab)
         }}
       />
+      <CompleteProfile open={Boolean(session) && prof.profile === null} suggestedName={providerName(session)} email={session?.user.email} onSave={prof.save} />
       <Toaster position="top-center" />
     </>
   )

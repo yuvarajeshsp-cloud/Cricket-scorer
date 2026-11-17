@@ -51,4 +51,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Group players: "From contacts" (only the contacts the person picks are read). -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 </manifest>

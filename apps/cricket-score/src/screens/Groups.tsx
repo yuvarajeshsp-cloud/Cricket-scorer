@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import QRCode from "qrcode"
-import { ArrowLeft, Bell, Check, ChevronRight, Copy, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
+import { ArrowLeft, Bell, Check, ChevronRight, Contact, Copy, LogOut, MessageCircle, Pencil, Plus, Search, RefreshCw, Trash2, UserCheck, UserPlus, Users } from "lucide-react"
 import { toast } from "sonner"
 import { Button, Input, Label, Spinner, Tabs, TabsList, TabsTrigger } from "@rajesh-hub/ui"
 import type { Match } from "../engine/types"
@@ -12,6 +12,8 @@ import { SectionLabel, Sheet } from "../components/bits"
 import { SignIn } from "../components/AccountSheet"
 import { PdfShareButton } from "../components/PdfShareButton"
 import { useNotifyPermission } from "../alerts"
+import { phoneKey, type Profile } from "../profile"
+import { canPickContacts, pickContacts } from "../contacts"
 import { Scorecard } from "./Scorecard"
 import { Avatar, PlayerProfile } from "./Players"
 import {
@@ -344,6 +346,8 @@ function GroupPlayers({
 }) {
   const [editing, setEditing] = useState<GroupPlayer | "new" | null>(null)
   const [sort, setSort] = useState<"runs" | "wickets" | "name">("runs")
+  const [q, setQ] = useState("")
+  const [picking, setPicking] = useState(false)
   const rows = useMemo(() => (players ?? []).map((p) => ({ p, c: careerStats(p.id, matches) })), [players, matches])
   const mine = players?.find((p) => p.userId === userId)
 
@@ -354,9 +358,41 @@ function GroupPlayers({
       </div>
     )
 
-  const sorted = [...rows].sort((a, b) =>
-    sort === "name" ? a.p.name.localeCompare(b.p.name) : sort === "runs" ? b.c.batting.runs - a.c.batting.runs : b.c.bowling.wickets - a.c.bowling.wickets,
-  )
+  // Search by name, or by phone number (any part of the digits).
+  const query = q.trim().toLowerCase()
+  const digits = query.replace(/\D/g, "")
+  const sorted = [...rows]
+    .filter(({ p }) => !query || p.name.toLowerCase().includes(query) || (digits.length >= 3 && (p.phone ?? "").replace(/\D/g, "").includes(digits)))
+    .sort((a, b) =>
+      sort === "name" ? a.p.name.localeCompare(b.p.name) : sort === "runs" ? b.c.batting.runs - a.c.batting.runs : b.c.bowling.wickets - a.c.bowling.wickets,
+    )
+
+  /** Pick people from the phone's contacts; anyone already in the group (same phone number) is not added twice. */
+  const addFromContacts = async () => {
+    setPicking(true)
+    try {
+      const picked = await pickContacts()
+      if (!picked.length) return
+      const added: GroupPlayer[] = []
+      const already: string[] = []
+      for (const c of picked) {
+        const match = c.phone ? players.find((p) => phoneKey(p.phone) && phoneKey(p.phone) === phoneKey(c.phone)) : undefined
+        if (match) {
+          already.push(match.name === c.name ? match.name : `${c.name} (as ${match.name})`)
+          continue
+        }
+        added.push(await addGroupPlayer(group.id, c.name.slice(0, 60), c.phone))
+      }
+      if (added.length) setPlayers((list) => [...(list ?? []), ...added])
+      const parts = [added.length ? `Added ${added.map((a) => a.name).join(", ")}` : "", already.length ? `Already in the group: ${already.join(", ")}` : ""].filter(Boolean)
+      toast.success(parts.join(". ") || "Nobody added")
+    } catch (e) {
+      const msg = errText(e)
+      if (!/cancel/i.test(msg)) toast.error(/denied|permission/i.test(msg) ? "Allow Contacts access for Cricket Score in your phone's settings, then try again." : msg)
+    } finally {
+      setPicking(false)
+    }
+  }
 
   const claim = async (p: GroupPlayer) => {
     try {
@@ -370,9 +406,22 @@ function GroupPlayers({
 
   return (
     <div className="flex flex-col gap-3">
-      <Button variant="outline" className="h-12 rounded-2xl font-semibold" onClick={() => setEditing("new")}>
-        <UserPlus /> Add a player
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" className={canPickContacts() ? "h-12 rounded-2xl font-semibold" : "col-span-2 h-12 rounded-2xl font-semibold"} onClick={() => setEditing("new")}>
+          <UserPlus /> Add a player
+        </Button>
+        {canPickContacts() ? (
+          <Button variant="outline" className="h-12 rounded-2xl font-semibold" disabled={picking} onClick={() => void addFromContacts()}>
+            {picking ? <Spinner /> : <Contact />} From contacts
+          </Button>
+        ) : null}
+      </div>
+      {players.length > 3 ? (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="h-11 rounded-2xl pl-10 text-base" placeholder="Search by name or phone number" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+      ) : null}
       {!mine && players.length ? <p className="text-sm text-muted-foreground">Are you one of these players? Tap “This is me” so your stats follow you.</p> : null}
       <div className="flex gap-2">
         {(["runs", "wickets", "name"] as const).map((s) => (
@@ -382,6 +431,7 @@ function GroupPlayers({
         ))}
       </div>
       {!players.length ? <p className="rounded-3xl border-2 border-dashed p-6 text-center text-sm text-muted-foreground">No players yet. Add the people who play in this group.</p> : null}
+      {players.length && !sorted.length ? <p className="p-4 text-center text-sm text-muted-foreground">No player matches “{q.trim()}”.</p> : null}
       {sorted.map(({ p, c }) => (
         <div key={p.id} className="flex flex-col gap-2 rounded-3xl bg-card p-3 ring-1 ring-border">
           <div className="flex items-center gap-3">
@@ -611,7 +661,7 @@ function GroupInvite({ group, userId, onChanged, onBack }: { group: Group; userI
 
 /* ------------------------------------------------------------------ Join from an invite link */
 
-export function JoinGroup({ code, userId, onJoined }: { code: string; userId: string | null; onJoined: (groupId: string) => void }) {
+export function JoinGroup({ code, userId, profile, onJoined }: { code: string; userId: string | null; profile?: Profile | null; onJoined: (groupId: string) => void }) {
   const [group, setGroup] = useState<{ id: string; name: string } | null | undefined>(undefined)
   const [step, setStep] = useState<"join" | "who">("join")
   const [players, setPlayers] = useState<GroupPlayer[] | null>(null)
@@ -639,6 +689,7 @@ export function JoinGroup({ code, userId, onJoined }: { code: string; userId: st
   }
 
   const done = () => (location.hash = "")
+  const isMe = (p: GroupPlayer) => Boolean(profile?.phone) && phoneKey(p.phone) === phoneKey(profile?.phone)
 
   return (
     <main className="mx-auto flex min-h-svh max-w-lg flex-col gap-5 p-4">
@@ -684,6 +735,8 @@ export function JoinGroup({ code, userId, onJoined }: { code: string; userId: st
           <div className="flex flex-col gap-2">
             {(players ?? [])
               .filter((p) => !p.userId)
+              // A player with my phone number first: most likely me.
+              .sort((a, b) => Number(isMe(b)) - Number(isMe(a)))
               .map((p) => (
                 <button
                   key={p.id}
@@ -704,7 +757,7 @@ export function JoinGroup({ code, userId, onJoined }: { code: string; userId: st
                     <span className="block truncate font-semibold">{p.name}</span>
                     {p.phone ? <span className="block text-xs text-muted-foreground">{p.phone}</span> : null}
                   </span>
-                  <span className="text-sm font-semibold text-brand-blue">This is me</span>
+                  <span className="text-sm font-semibold text-brand-blue">{isMe(p) ? "This looks like you" : "This is me"}</span>
                 </button>
               ))}
           </div>
@@ -716,7 +769,7 @@ export function JoinGroup({ code, userId, onJoined }: { code: string; userId: st
           </Button>
           <PlayerForm
             open={adding}
-            player={null}
+            player={profile ? { id: "", name: profile.name, phone: profile.phone, userId: null } : null}
             title="Add yourself"
             onClose={() => setAdding(false)}
             onSave={async (name, phone) => {

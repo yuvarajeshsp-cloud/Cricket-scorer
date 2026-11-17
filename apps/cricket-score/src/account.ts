@@ -59,3 +59,36 @@ function friendly(message: string, status?: number): string {
   if (m.includes("fetch") || m.includes("network")) return "No internet connection. Try again when you're online."
   return message
 }
+
+/** Where Google sends the phone app back to (an app link: cricketscore://auth#access_token=…). */
+export const APP_AUTH_REDIRECT = "cricketscore://auth"
+
+/**
+ * "Continue with Google". Website: a normal redirect to Google and back to the site.
+ * Phone app: Google opens in an in-app browser tab and returns through cricketscore://auth.
+ */
+export async function signInWithGoogle(): Promise<void> {
+  if (!db) throw new Error("Sign-in isn't available in this version.")
+  const { Capacitor } = await import("@capacitor/core")
+  if (!Capacitor.isNativePlatform()) {
+    const { error } = await db.auth.signInWithOAuth({ provider: "google", options: { redirectTo: siteUrl() } })
+    if (error) throw new Error(friendly(error.message, error.status))
+    return
+  }
+  const { data, error } = await db.auth.signInWithOAuth({ provider: "google", options: { redirectTo: APP_AUTH_REDIRECT, skipBrowserRedirect: true } })
+  if (error || !data.url) throw new Error(friendly(error?.message ?? "Couldn't start Google sign-in", error?.status))
+  const { Browser } = await import("@capacitor/browser")
+  await Browser.open({ url: data.url })
+}
+
+/** The app was opened by cricketscore://auth after Google sign-in: keep the session. True if handled. */
+export async function finishAppSignIn(url: string): Promise<boolean> {
+  if (!db || !url.startsWith(APP_AUTH_REDIRECT)) return false
+  const params = new URLSearchParams(url.split("#")[1] ?? url.split("?")[1] ?? "")
+  const { Browser } = await import("@capacitor/browser")
+  void Browser.close().catch(() => undefined)
+  const access_token = params.get("access_token")
+  const refresh_token = params.get("refresh_token")
+  if (access_token && refresh_token) await db.auth.setSession({ access_token, refresh_token })
+  return true
+}

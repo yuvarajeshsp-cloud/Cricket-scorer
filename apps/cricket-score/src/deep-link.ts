@@ -24,6 +24,11 @@ export function setupDeepLinks() {
   }
   if (!Capacitor.isNativePlatform()) return
   const open = (url?: string) => {
+    // Back from Google sign-in (cricketscore://auth#access_token=…).
+    if (url?.startsWith("cricketscore://auth")) {
+      void import("./account").then((m) => m.finishAppSignIn(url))
+      return
+    }
     const route = url && routeFromUrl(url)
     if (route) location.hash = route
   }
