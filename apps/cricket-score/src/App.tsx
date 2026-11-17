@@ -196,6 +196,9 @@ function ScorerApp({ groupRoute }: { groupRoute: string | null }) {
     })
 
   const startMatch = (s: MatchSetup, created: Player[], groupId: string | null = null, addToGroup: Player[] = []) => {
+    // Leave the (scrolled) setup page at the top, so the scoring screen and its first
+    // batter / bowler sheet open with nothing hidden under the iPhone status bar.
+    window.scrollTo(0, 0)
     const [bat, bowl] = battingFirst(s)
     const all = [...data.players, ...created]
     const roster = Object.fromEntries(

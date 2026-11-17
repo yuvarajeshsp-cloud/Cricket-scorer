@@ -55,8 +55,11 @@ export function Scoring(props: ScoringProps) {
       className={cn(
         "flex flex-col gap-3",
         // While scoring, fit exactly between the top of the page and the bottom menu (4rem + safe area)
-        // so Wide / No ball / Undo are never below the fold. Short phones get a more compact layout.
-        cur.complete ? "pb-24" : "h-[calc(100dvh-6rem-env(safe-area-inset-bottom))] min-h-[540px] gap-2 [@media(min-height:780px)]:gap-3",
+        // so Wide / No ball / Undo are never below the fold. The body is also padded by the top safe
+        // area (the iPhone status bar / Dynamic Island), so take that off too. Short phones get a more compact layout.
+        cur.complete
+          ? "pb-24"
+          : "h-[calc(100dvh-6rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[500px] gap-2 [@media(min-height:780px)]:gap-3",
       )}
     >
       {/* Score hero */}

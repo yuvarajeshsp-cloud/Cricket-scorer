@@ -6,3 +6,12 @@
 /* Let Tailwind see the class names used inside the shared components. */
 @source "../node_modules/@rajesh-hub/ui/src";
 @source "../../../packages/ui/src";
+
+/* Opening a sheet locks scrolling (react-remove-scroll), which sets body padding-top/left/right
+   to 0. That dropped the iPhone status-bar safe area, so the page jumped up ~60pt under the
+   status bar whenever a sheet opened. Keep the safe-area padding while locked. */
+body[data-scroll-locked] {
+  padding-top: env(safe-area-inset-top) !important;
+  padding-left: env(safe-area-inset-left) !important;
+  padding-right: env(safe-area-inset-right) !important;
+}
